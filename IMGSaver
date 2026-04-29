@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clomosy Tactic Renderer</title>
+    <style>
+        body {
+            background-color: #071109;
+            color: #ffffff;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            background-color: #08160D;
+            border: 2px solid #173522;
+            border-radius: 10px;
+            padding: 20px;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        /* The canvas scales visually but retains high-res pixel data internally */
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border: 4px solid #002db3;
+            border-radius: 4px;
+            margin-top: 15px;
+            display: none; /* Hidden until rendered */
+        }
+        #finalImage {
+            max-width: 100%;
+            border: 4px solid #3DE482;
+            border-radius: 4px;
+            margin-top: 15px;
+            display: none;
+        }
+        button {
+            background-color: #16A64B;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        button:hover { background-color: #209400; }
+        .log { color: #3DE482; font-family: monospace; margin-top: 10px; }
+        .error { color: #EF4444; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Tactic Renderer</h2>
+        <div id="statusLog" class="log">Loading resources...</div>
+        
+        <canvas id="renderCanvas"></canvas>
+        
+        <img id="finalImage" alt="Rendered Tactic" />
+        <br>
+        <button id="downloadBtn" style="display: none;" onclick="downloadScreenshot()">Download to Phone</button>
+    </div>
+
+<script>
+        const canvas = document.getElementById('renderCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusLog = document.getElementById('statusLog');
+
+        // We only need to preload the background and the ball now
+        const ASSETS = {
+            Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
+            Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png'
+        };
+        const loadedImages = {};
+
+        function preloadImages(callback) {
+            let loadedCount = 0;
+            const keys = Object.keys(ASSETS);
+            keys.forEach(key => {
+                const img = new Image();
+                img.crossOrigin = "Anonymous"; 
+                img.onload = () => {
+                    loadedImages[key] = img;
+                    loadedCount++;
+                    if (loadedCount === keys.length) callback();
+                };
+                img.src = ASSETS[key];
+            });
+        }
+
+        function renderAndDownload(jsonPayload) {
+            try {
+                const elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
+                const bgImg = loadedImages.Background;
+                canvas.width = bgImg.width;
+                canvas.height = bgImg.height;
+
+                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+
+                elements.forEach(el => {
+                    const cx = el.x * canvas.width;
+                    const cy = el.y * canvas.height;
+                    const w = el.width * canvas.width;
+                    const h = el.height * canvas.height;
+                    const angleRad = el.angle * (Math.PI / 180);
+
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(angleRad);
+
+                    if (el.type === 'Ball' && loadedImages.Ball) {
+                        ctx.drawImage(loadedImages.Ball, -w / 2, -h / 2, w, h);
+                    } 
+                    // NEW: Draw Players and Opponents as Canvas Shapes (Matching Clomosy Panels)
+                    else if (el.type === 'Player' || el.type === 'Opponent') {
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
+                        
+                        // Fill color based on type
+                        ctx.fillStyle = el.type === 'Player' ? "#3B82F6" : "#EF4444";
+                        ctx.fill();
+                        
+                        // White border
+                        ctx.lineWidth = 2; 
+                        ctx.strokeStyle = "#FFFFFF"; 
+                        ctx.stroke();
+                    } 
+                    else if (el.type === 'Line' || el.type === 'Arrow') { 
+                        ctx.fillStyle = "#EF4444"; 
+                        ctx.fillRect(-w / 2, -h / 2, w, Math.max(h, 4)); 
+                    } 
+                    else if (el.type === 'Rect') { 
+                        ctx.strokeStyle = "#EF4444"; 
+                        ctx.lineWidth = 3; 
+                        ctx.strokeRect(-w / 2, -h / 2, w, h); 
+                    } 
+                    else if (el.type === 'Circle') { 
+                        ctx.strokeStyle = "#EF4444"; 
+                        ctx.lineWidth = 3; 
+                        ctx.beginPath(); 
+                        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI); 
+                        ctx.stroke(); 
+                    } 
+                    else if (el.type === 'Text' && el.text_content) { 
+                        ctx.fillStyle = "#FFFFFF"; 
+                        ctx.font = "bold 20px Arial"; 
+                        ctx.textAlign = "center"; 
+                        ctx.textBaseline = "middle"; 
+                        ctx.fillText(el.text_content, 0, 0); 
+                    }
+
+                    ctx.restore();
+                });
+
+                // AUTO DOWNLOAD LOGIC
+                const dataURL = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.download = 'Taktik_Tahtasi.png';
+                link.href = dataURL;
+                link.click(); 
+
+                statusLog.innerText = "Downloaded successfully!";
+            } catch (error) {
+                statusLog.innerText = "Render Error: " + error.message;
+            }
+        }
+
+        window.onload = () => {
+            preloadImages(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const dataParam = urlParams.get('data');
+                if (dataParam) renderAndDownload(dataParam);
+            });
+        };
+    </script>
+</body>
+</html>
