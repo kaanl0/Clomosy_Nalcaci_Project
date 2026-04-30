@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobil Taktik İndirici</title>
+    <title>Mobil Taktik Kaydedici</title>
     <style>
         body {
             background-color: #08160D;
@@ -17,50 +17,66 @@
             justify-content: center;
             height: 100vh;
             width: 100vw;
+        }
+
+        .mobile-rotate-container {
+            transform: rotate(90deg);
+            transform-origin: center;
+            width: 100vh; 
+            height: 100vw;
+            display: flex;
             flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
         }
 
-        .log { 
-            color: #3DE482; 
-            font-size: 20px; 
-            font-weight: bold; 
-            text-align: center; 
+        #finalImage {
+            max-width: 90%;
+            max-height: 60vh;
+            border: 3px solid #3DE482;
+            border-radius: 10px;
+            display: none;
+            box-shadow: 0px 4px 15px rgba(0,0,0,0.6);
+            object-fit: contain;
         }
+
+        button {
+            background-color: #3B82F6;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 80%;
+            max-width: 350px;
+            display: none;
+            box-shadow: 0px 4px 10px rgba(59, 130, 246, 0.4);
+        }
+        button:active { background-color: #2563EB; transform: scale(0.98); }
         
-        .spinner {
-            border: 4px solid rgba(61, 228, 130, 0.3);
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border-left-color: #3DE482;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* 
-           Görünmez Canvas: Resim burada çizilecek ama ekranda görünmeyecek.
-        */
+        .log { color: #3DE482; font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 15px; }
         canvas { display: none; } 
     </style>
 </head>
 <body>
 
-    <div class="spinner" id="spinner"></div>
-    <div id="statusLog" class="log">Taktik İşleniyor ve İndiriliyor...</div>
+    <div class="mobile-rotate-container">
+        <div id="statusLog" class="log">Taktik İşleniyor... Lütfen Bekleyin.</div>
+        <img id="finalImage" alt="Rendered Tactic" />
+        <button id="shareBtn">📸 Galeriye Kaydet / Paylaş</button>
+    </div>
+
     <canvas id="renderCanvas"></canvas>
 
 <script>
         const canvas = document.getElementById('renderCanvas');
         const ctx = canvas.getContext('2d');
         const statusLog = document.getElementById('statusLog');
-        const spinner = document.getElementById('spinner');
 
-        // YATAY SAHA GÖRSELİ BURADA (Senin istediğin görsel)
         const ASSETS = {
             Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
             Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png'
@@ -73,29 +89,18 @@
             keys.forEach(key => {
                 const img = new Image();
                 img.crossOrigin = "Anonymous"; 
-                img.onload = () => {
-                    loadedImages[key] = img;
-                    loadedCount++;
-                    if (loadedCount === keys.length) callback();
-                };
-                img.onerror = () => {
-                    statusLog.innerText = "Hata: " + key + " yüklenemedi!";
-                    statusLog.style.color = "#EF4444";
-                    spinner.style.display = 'none';
-                };
+                img.onload = () => { loadedImages[key] = img; loadedCount++; if (loadedCount === keys.length) callback(); };
                 img.src = ASSETS[key];
             });
         }
 
-        function renderAndDownload(jsonPayload) {
+        function renderAndDisplay(jsonPayload) {
             try {
                 const elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
                 const bgImg = loadedImages.Background;
                 
-                // Canvas boyutu görselin orijinal boyutu
                 canvas.width = bgImg.width;
                 canvas.height = bgImg.height;
-
                 ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
                 elements.forEach(el => {
@@ -111,70 +116,48 @@
 
                     if (el.type === 'Ball' && loadedImages.Ball) {
                         ctx.drawImage(loadedImages.Ball, -w / 2, -h / 2, w, h);
-                    } 
-                    else if (el.type === 'Player' || el.type === 'Opponent') {
+                    } else if (el.type === 'Player' || el.type === 'Opponent') {
                         ctx.beginPath();
                         ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
                         ctx.fillStyle = el.type === 'Player' ? "#3B82F6" : "#EF4444";
                         ctx.fill();
-                        ctx.lineWidth = 2; 
-                        ctx.strokeStyle = "#FFFFFF"; 
-                        ctx.stroke();
-                    } 
-                    else if (el.type === 'Line' || el.type === 'Arrow') { 
-                        ctx.fillStyle = "#EF4444"; 
-                        ctx.fillRect(-w / 2, -h / 2, w, Math.max(h, 4)); 
-                    } 
-                    else if (el.type === 'Rect') { 
-                        ctx.strokeStyle = "#EF4444"; 
-                        ctx.lineWidth = 3; 
-                        ctx.strokeRect(-w / 2, -h / 2, w, h); 
-                    } 
-                    else if (el.type === 'Circle') { 
-                        ctx.strokeStyle = "#EF4444"; 
-                        ctx.lineWidth = 3; 
-                        ctx.beginPath(); 
-                        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI); 
-                        ctx.stroke(); 
-                    } 
-                    else if (el.type === 'Text' && el.text_content) { 
-                        ctx.fillStyle = "#FFFFFF"; 
-                        ctx.font = "bold 20px Arial"; 
-                        ctx.textAlign = "center"; 
-                        ctx.textBaseline = "middle"; 
-                        ctx.fillText(el.text_content, 0, 0); 
+                        ctx.lineWidth = 2; ctx.strokeStyle = "#FFFFFF"; ctx.stroke();
+                    } else if (el.type === 'Line' || el.type === 'Arrow') { 
+                        ctx.fillStyle = "#EF4444"; ctx.fillRect(-w / 2, -h / 2, w, Math.max(h, 4)); 
+                    } else if (el.type === 'Rect') { 
+                        ctx.strokeStyle = "#EF4444"; ctx.lineWidth = 3; ctx.strokeRect(-w / 2, -h / 2, w, h); 
+                    } else if (el.type === 'Circle') { 
+                        ctx.strokeStyle = "#EF4444"; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI); ctx.stroke(); 
+                    } else if (el.type === 'Text' && el.text_content) { 
+                        ctx.fillStyle = "#FFFFFF"; ctx.font = "bold 20px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(el.text_content, 0, 0); 
                     }
-
                     ctx.restore();
                 });
 
-                // ZORLA İNDİRME MANTIĞI (MOBİL İÇİN)
-                canvas.toBlob((blob) => {
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.download = 'Nalcaci_Taktik_' + new Date().getTime() + '.png'; // Her indirmede benzersiz isim
-                    link.href = url;
-                    
-                    // Görünmez linki DOM'a ekle, tıkla ve sil
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    URL.revokeObjectURL(url);
-                    
-                    statusLog.innerText = "İndirme Başarılı!";
-                    spinner.style.display = 'none';
-                    
-                    // 2 Saniye sonra WebView'ı kapatmak için Clomosy'e boş sayfa sinyali gönder
-                    setTimeout(() => {
-                        window.location.href = "about:blank"; 
-                    }, 2000);
-                    
-                }, 'image/png');
+                const dataURL = canvas.toDataURL("image/png");
+                const finalImg = document.getElementById('finalImage');
+                finalImg.src = dataURL;
+                finalImg.style.display = 'block';
+                statusLog.style.display = 'none';
 
+                const shareBtn = document.getElementById('shareBtn');
+                shareBtn.style.display = 'block';
+                
+                shareBtn.onclick = () => {
+                    canvas.toBlob((blob) => {
+                        const file = new File([blob], 'Nalcaci_Taktik.png', { type: 'image/png' });
+                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                            navigator.share({
+                                title: 'Taktik Tahtası',
+                                files: [file]
+                            }).catch(err => console.error(err));
+                        } else {
+                            alert("Cihazınız doğrudan paylaşımı desteklemiyor.");
+                        }
+                    }, 'image/png');
+                };
             } catch (error) {
-                statusLog.innerText = "Render Hatası: " + error.message;
-                statusLog.style.color = "#EF4444";
-                spinner.style.display = 'none';
+                statusLog.innerText = "Hata: " + error.message;
             }
         }
 
@@ -182,12 +165,7 @@
             preloadImages(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const dataParam = urlParams.get('data');
-                if (dataParam) renderAndDownload(dataParam);
-                else {
-                    statusLog.innerText = "Hata: Veri Bulunamadı.";
-                    statusLog.style.color = "#EF4444";
-                    spinner.style.display = 'none';
-                }
+                if (dataParam) renderAndDisplay(dataParam);
             });
         };
     </script>
