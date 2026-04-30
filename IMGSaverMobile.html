@@ -14,7 +14,7 @@
         /* TRUVA ATI BUTONU: CLOMOSY'DEN KAÇIŞ */
         .btn-link { 
             background-color: #16A64B; color: white; padding: 20px 30px; font-size: 18px; font-weight: bold; 
-            border-radius: 12px; text-decoration: none; display: none; width: 100%; max-width: 350px; 
+            border-radius: 12px; border: none; cursor: pointer; display: none; width: 100%; max-width: 350px; 
             box-shadow: 0px 4px 15px rgba(22, 166, 75, 0.4); 
         }
         .btn-link:active { background-color: #11823B; transform: scale(0.98); }
@@ -30,7 +30,7 @@
     <div id="statusLog" class="log">Yükleniyor...</div>
     
     <!-- CLOMOSY İÇİNDE GÖSTERİLECEK BYPASS BUTONU -->
-    <a id="bypassBtn" class="btn-link" target="_blank">🚀 Tarayıcıda Aç ve İndir</a>
+    <button id="bypassBtn" class="btn-link">🚀 Chrome'da Aç ve İndir</button>
 
     <canvas id="renderCanvas"></canvas>
 
@@ -109,20 +109,30 @@
 
             if (dataParam) {
                 if (isDownloadMode) {
-                    // DIŞ TARAYICIDAYIZ (CHROME/SAFARI): ÇİZ VE OTOMATİK İNDİR
+                    // 2. AŞAMA: DIŞ TARAYICIDAYIZ (CHROME/SAFARI) -> ÇİZ VE OTOMATİK İNDİR
                     spinner.style.display = 'block';
                     statusLog.innerText = "Taktik İşleniyor ve İndiriliyor...";
                     preloadImages(() => forceDownload(dataParam));
                 } else {
-                    // CLOMOSY WEBVIEW İÇİNDEYİZ: ZORLA DIŞARI FIRLATMA BUTONUNU GÖSTER
+                    // 1. AŞAMA: CLOMOSY WEBVIEW İÇİNDEYİZ -> BYPASS BUTONUNU GÖSTER
                     spinner.style.display = 'none';
-                    statusLog.innerText = "Taktik Hazır!";
-                    
-                    // Linke download=1 parametresini ekle ve dışarı atacak butona ver
-                    const newUrl = new URL(window.location.href);
-                    newUrl.searchParams.set('download', '1');
-                    bypassBtn.href = newUrl.toString();
+                    statusLog.innerText = "Taktik İndirilmeye Hazır!";
                     bypassBtn.style.display = 'block';
+                    
+                    bypassBtn.onclick = () => {
+                        // Linke download=1 ekle
+                        const rawUrl = "kaanl0.github.io/Clomosy_Nalcaci_Project/IMGSaverMobile.html?data=" + encodeURIComponent(dataParam) + "&download=1";
+                        
+                        // ANDROID INTENT (WebView'ı yıkar geçer ve Chrome'u zorla açar)
+                        const androidIntent = "intent://" + rawUrl + "#Intent;scheme=https;package=com.android.chrome;end";
+                        
+                        window.location.href = androidIntent;
+                        
+                        // iOS Safari ve Hata Durumları İçin Fallback (Yedek Plan)
+                        setTimeout(() => {
+                            window.top.location.href = "https://" + rawUrl;
+                        }, 1000);
+                    };
                 }
             }
         };
