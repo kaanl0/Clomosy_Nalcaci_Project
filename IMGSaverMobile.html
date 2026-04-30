@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobil Taktik Önizleme</title>
+    <title>Mobil Taktik İndirici</title>
     <style>
         body {
             background-color: #08160D;
@@ -17,81 +17,52 @@
             justify-content: center;
             height: 100vh;
             width: 100vw;
+            flex-direction: column;
+        }
+
+        .log { 
+            color: #3DE482; 
+            font-size: 20px; 
+            font-weight: bold; 
+            text-align: center; 
+        }
+        
+        .spinner {
+            border: 4px solid rgba(61, 228, 130, 0.3);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border-left-color: #3DE482;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* 
-           2. İSTEK: MOBİL İÇİN 90 DERECE ROTASYON
-           Clomosy tarafındaki RotationAngle=90 mantığını burada CSS ile taklit ediyoruz. 
-           Böylece yazılar ve butonlar kullanıcıya tam yatay ve düzgün görünecek.
+           Görünmez Canvas: Resim burada çizilecek ama ekranda görünmeyecek.
         */
-        .mobile-rotate-container {
-            transform: rotate(90deg);
-            transform-origin: center;
-            width: 100vh;  /* Yükseklik ve Genişlik yer değiştirdi */
-            height: 100vw;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
-        }
-
-        #finalImage {
-            max-width: 90%;
-            max-height: 65vh; /* Ekrana sığması için */
-            border: 3px solid #3DE482;
-            border-radius: 10px;
-            display: none;
-            box-shadow: 0px 4px 15px rgba(0,0,0,0.6);
-            object-fit: contain;
-        }
-
-        button {
-            background-color: #16A64B;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 10px;
-            cursor: pointer;
-            margin-top: 20px;
-            width: 80%;
-            max-width: 350px;
-            display: none;
-            box-shadow: 0px 4px 10px rgba(22, 166, 75, 0.4);
-        }
-        button:active { background-color: #11823B; transform: scale(0.98); }
-        
-        .log { 
-            color: #3DE482; 
-            font-size: 18px; 
-            font-weight: bold; 
-            text-align: center; 
-            margin-bottom: 15px;
-        }
-        
-        canvas { display: none; } /* Canvas sadece arka planda çizim için kullanılır */
+        canvas { display: none; } 
     </style>
 </head>
 <body>
 
-    <div class="mobile-rotate-container">
-        <div id="statusLog" class="log">Taktik İşleniyor... Lütfen Bekleyin.</div>
-        <img id="finalImage" alt="Rendered Tactic" />
-        <button id="shareBtn">📤 Paylaş / Galeriye Kaydet</button>
-    </div>
-
+    <div class="spinner" id="spinner"></div>
+    <div id="statusLog" class="log">Taktik İşleniyor ve İndiriliyor...</div>
     <canvas id="renderCanvas"></canvas>
 
 <script>
         const canvas = document.getElementById('renderCanvas');
         const ctx = canvas.getContext('2d');
         const statusLog = document.getElementById('statusLog');
+        const spinner = document.getElementById('spinner');
 
-        // 1. İSTEK: MOBİL İÇİN DİKEY SAHA BOYUTU
+        // YATAY SAHA GÖRSELİ BURADA (Senin istediğin görsel)
         const ASSETS = {
-            Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/dikeysaha2.jpg',
+            Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
             Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png'
         };
         const loadedImages = {};
@@ -110,17 +81,18 @@
                 img.onerror = () => {
                     statusLog.innerText = "Hata: " + key + " yüklenemedi!";
                     statusLog.style.color = "#EF4444";
+                    spinner.style.display = 'none';
                 };
                 img.src = ASSETS[key];
             });
         }
 
-        function renderAndDisplay(jsonPayload) {
+        function renderAndDownload(jsonPayload) {
             try {
                 const elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
                 const bgImg = loadedImages.Background;
                 
-                // Canvas boyutunu tam olarak mobil sahanın orijinal piksel boyutuna kilitliyoruz.
+                // Canvas boyutu görselin orijinal boyutu
                 canvas.width = bgImg.width;
                 canvas.height = bgImg.height;
 
@@ -176,44 +148,33 @@
                     ctx.restore();
                 });
 
-                // Çizimi tamamla ve HTML içindeki <img> etiketine aktar
-                const dataURL = canvas.toDataURL("image/png");
-                const finalImg = document.getElementById('finalImage');
-                finalImg.src = dataURL;
-                finalImg.style.display = 'block';
-                statusLog.innerText = "Taktik Hazır!";
+                // ZORLA İNDİRME MANTIĞI (MOBİL İÇİN)
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = 'Nalcaci_Taktik_' + new Date().getTime() + '.png'; // Her indirmede benzersiz isim
+                    link.href = url;
+                    
+                    // Görünmez linki DOM'a ekle, tıkla ve sil
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                    
+                    statusLog.innerText = "İndirme Başarılı!";
+                    spinner.style.display = 'none';
+                    
+                    // 2 Saniye sonra WebView'ı kapatmak için Clomosy'e boş sayfa sinyali gönder
+                    setTimeout(() => {
+                        window.location.href = "about:blank"; 
+                    }, 2000);
+                    
+                }, 'image/png');
 
-                // 3. İSTEK: İNDİRMEYİ ENGELLEYEN YAPIYI AŞMA (NATIVE SHARE API)
-                const shareBtn = document.getElementById('shareBtn');
-                shareBtn.style.display = 'block';
-                
-                shareBtn.onclick = () => {
-                    canvas.toBlob((blob) => {
-                        const file = new File([blob], 'Nalcaci_Taktik.png', { type: 'image/png' });
-                        
-                        // Mobil işletim sisteminin kendi paylaşım/kaydetme menüsünü aç
-                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                            navigator.share({
-                                title: 'Nalçacılılar Taktik Tahtası',
-                                text: 'Sahadaki taktiğimi incele!',
-                                files: [file]
-                            }).catch(err => {
-                                console.error("Paylaşım iptal edildi veya hata oluştu:", err);
-                            });
-                        } else {
-                            // Cihaz Native Share desteklemiyorsa Klasik İndirme (Fallback)
-                            const url = URL.createObjectURL(blob);
-                            const link = document.createElement('a');
-                            link.download = 'Nalcaci_Taktik.png';
-                            link.href = url;
-                            link.click();
-                            URL.revokeObjectURL(url);
-                        }
-                    }, 'image/png');
-                };
             } catch (error) {
-                statusLog.innerText = "Render Error: " + error.message;
+                statusLog.innerText = "Render Hatası: " + error.message;
                 statusLog.style.color = "#EF4444";
+                spinner.style.display = 'none';
             }
         }
 
@@ -221,10 +182,11 @@
             preloadImages(() => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const dataParam = urlParams.get('data');
-                if (dataParam) renderAndDisplay(dataParam);
+                if (dataParam) renderAndDownload(dataParam);
                 else {
-                    statusLog.innerText = "Hata: JSON verisi bulunamadı.";
+                    statusLog.innerText = "Hata: Veri Bulunamadı.";
                     statusLog.style.color = "#EF4444";
+                    spinner.style.display = 'none';
                 }
             });
         };
