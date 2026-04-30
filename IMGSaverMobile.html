@@ -3,72 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobil Taktik Kaydedici</title>
+    <title>Mobil Taktik İndirici</title>
     <style>
-        body {
-            background-color: #08160D;
-            color: #ffffff;
-            font-family: sans-serif;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            width: 100vw;
+        body { 
+            background-color: #08160D; color: #ffffff; font-family: sans-serif; margin: 0; padding: 20px; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; box-sizing: border-box; text-align: center; 
         }
-
-        .mobile-rotate-container {
-            transform: rotate(90deg);
-            transform-origin: center;
-            width: 100vh; 
-            height: 100vw;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
-        }
-
-        #finalImage {
-            max-width: 90%;
-            max-height: 60vh;
-            border: 3px solid #3DE482;
-            border-radius: 10px;
-            display: none;
-            box-shadow: 0px 4px 15px rgba(0,0,0,0.6);
-            object-fit: contain;
-            /* YENİ: Telefondaki basılı tutma (Long Press) menüsünün kesin çıkması için: */
-            pointer-events: auto;
-            -webkit-touch-callout: default;
-        }
-
-        .log { color: #3DE482; font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 15px; }
+        .log { color: #3DE482; font-size: 20px; font-weight: bold; margin-bottom: 20px; }
         
-        /* YENİ: Kullanıcıyı yönlendiren talimat yazısı */
-        .instruction { 
-            color: #F59E0B; 
-            font-size: 16px; 
-            font-weight: bold; 
-            text-align: center; 
-            margin-top: 20px; 
-            display: none;
-            background-color: rgba(0,0,0,0.5);
-            padding: 10px;
-            border-radius: 8px;
+        /* TRUVA ATI BUTONU: CLOMOSY'DEN KAÇIŞ */
+        .btn-link { 
+            background-color: #16A64B; color: white; padding: 20px 30px; font-size: 18px; font-weight: bold; 
+            border-radius: 12px; text-decoration: none; display: none; width: 100%; max-width: 350px; 
+            box-shadow: 0px 4px 15px rgba(22, 166, 75, 0.4); 
         }
-
+        .btn-link:active { background-color: #11823B; transform: scale(0.98); }
+        
+        .spinner { border: 4px solid rgba(61, 228, 130, 0.3); width: 50px; height: 50px; border-radius: 50%; border-left-color: #3DE482; animation: spin 1s linear infinite; margin-bottom: 20px; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         canvas { display: none; } 
     </style>
 </head>
 <body>
 
-    <div class="mobile-rotate-container">
-        <div id="statusLog" class="log">Taktik İşleniyor... Lütfen Bekleyin.</div>
-        <img id="finalImage" alt="Rendered Tactic" />
-        <div id="instruction" class="instruction">👆<br>Galerinize kaydetmek veya paylaşmak için<br>resmin üzerine basılı tutun!</div>
-    </div>
+    <div id="spinner" class="spinner"></div>
+    <div id="statusLog" class="log">Yükleniyor...</div>
+    
+    <!-- CLOMOSY İÇİNDE GÖSTERİLECEK BYPASS BUTONU -->
+    <a id="bypassBtn" class="btn-link" target="_blank">🚀 Tarayıcıda Aç ve İndir</a>
 
     <canvas id="renderCanvas"></canvas>
 
@@ -76,52 +38,41 @@
         const canvas = document.getElementById('renderCanvas');
         const ctx = canvas.getContext('2d');
         const statusLog = document.getElementById('statusLog');
-        const instruction = document.getElementById('instruction');
+        const bypassBtn = document.getElementById('bypassBtn');
+        const spinner = document.getElementById('spinner');
 
-        const ASSETS = {
-            Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
-            Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png'
-        };
+        const ASSETS = { Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg', Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png' };
         const loadedImages = {};
 
         function preloadImages(callback) {
-            let loadedCount = 0;
-            const keys = Object.keys(ASSETS);
+            let loadedCount = 0; const keys = Object.keys(ASSETS);
             keys.forEach(key => {
-                const img = new Image();
-                img.crossOrigin = "Anonymous"; 
+                const img = new Image(); img.crossOrigin = "Anonymous"; 
                 img.onload = () => { loadedImages[key] = img; loadedCount++; if (loadedCount === keys.length) callback(); };
                 img.src = ASSETS[key];
             });
         }
 
-        function renderAndDisplay(jsonPayload) {
+        // ÖZGÜR TARAYICI İÇİN OTOMATİK İNDİRME MANTIĞI
+        function forceDownload(jsonPayload) {
             try {
                 const elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
                 const bgImg = loadedImages.Background;
-                
-                canvas.width = bgImg.width;
-                canvas.height = bgImg.height;
+                canvas.width = bgImg.width; canvas.height = bgImg.height;
                 ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
                 elements.forEach(el => {
-                    const cx = el.x * canvas.width;
-                    const cy = el.y * canvas.height;
-                    const w = el.width * canvas.width;
-                    const h = el.height * canvas.height;
+                    const cx = el.x * canvas.width; const cy = el.y * canvas.height;
+                    const w = el.width * canvas.width; const h = el.height * canvas.height;
                     const angleRad = el.angle * (Math.PI / 180);
 
-                    ctx.save();
-                    ctx.translate(cx, cy);
-                    ctx.rotate(angleRad);
+                    ctx.save(); ctx.translate(cx, cy); ctx.rotate(angleRad);
 
                     if (el.type === 'Ball' && loadedImages.Ball) {
                         ctx.drawImage(loadedImages.Ball, -w / 2, -h / 2, w, h);
                     } else if (el.type === 'Player' || el.type === 'Opponent') {
-                        ctx.beginPath();
-                        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
-                        ctx.fillStyle = el.type === 'Player' ? "#3B82F6" : "#EF4444";
-                        ctx.fill();
+                        ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
+                        ctx.fillStyle = el.type === 'Player' ? "#3B82F6" : "#EF4444"; ctx.fill();
                         ctx.lineWidth = 2; ctx.strokeStyle = "#FFFFFF"; ctx.stroke();
                     } else if (el.type === 'Line' || el.type === 'Arrow') { 
                         ctx.fillStyle = "#EF4444"; ctx.fillRect(-w / 2, -h / 2, w, Math.max(h, 4)); 
@@ -135,27 +86,45 @@
                     ctx.restore();
                 });
 
-                // Görseli oluştur ve <img> etiketine aktar
-                const dataURL = canvas.toDataURL("image/png");
-                const finalImg = document.getElementById('finalImage');
-                finalImg.src = dataURL;
-                
-                // Animasyonlu Gösterim
-                finalImg.style.display = 'block';
-                statusLog.style.display = 'none'; // Bekleyin yazısını gizle
-                instruction.style.display = 'block'; // Basılı tut uyarısını göster
+                canvas.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = 'Nalcaci_Taktik_' + new Date().getTime() + '.png';
+                    link.href = url;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    spinner.style.display = 'none';
+                    statusLog.innerHTML = "✅ İndirme Başarılı!<br><br><span style='font-size:16px; color:#ffffff;'>Bu sekmeyi kapatıp uygulamaya dönebilirsiniz.</span>";
+                }, 'image/png');
 
-            } catch (error) {
-                statusLog.innerText = "Hata: " + error.message;
-            }
+            } catch (error) { statusLog.innerText = "Hata: " + error.message; }
         }
 
         window.onload = () => {
-            preloadImages(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const dataParam = urlParams.get('data');
-                if (dataParam) renderAndDisplay(dataParam);
-            });
+            const urlParams = new URLSearchParams(window.location.search);
+            const dataParam = urlParams.get('data');
+            const isDownloadMode = urlParams.get('download');
+
+            if (dataParam) {
+                if (isDownloadMode) {
+                    // DIŞ TARAYICIDAYIZ (CHROME/SAFARI): ÇİZ VE OTOMATİK İNDİR
+                    spinner.style.display = 'block';
+                    statusLog.innerText = "Taktik İşleniyor ve İndiriliyor...";
+                    preloadImages(() => forceDownload(dataParam));
+                } else {
+                    // CLOMOSY WEBVIEW İÇİNDEYİZ: ZORLA DIŞARI FIRLATMA BUTONUNU GÖSTER
+                    spinner.style.display = 'none';
+                    statusLog.innerText = "Taktik Hazır!";
+                    
+                    // Linke download=1 parametresini ekle ve dışarı atacak butona ver
+                    const newUrl = new URL(window.location.href);
+                    newUrl.searchParams.set('download', '1');
+                    bypassBtn.href = newUrl.toString();
+                    bypassBtn.style.display = 'block';
+                }
+            }
         };
     </script>
 </body>
