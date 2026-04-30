@@ -9,28 +9,39 @@
             background-color: #08160D; color: #ffffff; font-family: sans-serif; margin: 0; padding: 20px; 
             display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; box-sizing: border-box; text-align: center; 
         }
-        .log { color: #3DE482; font-size: 20px; font-weight: bold; margin-bottom: 20px; }
+        .mobile-rotate-container {
+            transform: rotate(90deg); transform-origin: center; width: 100vh; height: 100vw;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box;
+        }
+        #finalImage {
+            max-width: 90%; max-height: 55vh; border: 3px solid #3DE482; border-radius: 10px; display: none; box-shadow: 0px 4px 15px rgba(0,0,0,0.6); object-fit: contain; margin-bottom: 20px;
+        }
+        .log { color: #3DE482; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .info-text { color: #F59E0B; font-size: 14px; margin-bottom: 20px; display: none; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;}
         
-        /* TRUVA ATI BUTONU: CLOMOSY'DEN KAÇIŞ */
         .btn-link { 
-            background-color: #16A64B; color: white; padding: 20px 30px; font-size: 18px; font-weight: bold; 
-            border-radius: 12px; border: none; cursor: pointer; display: none; width: 100%; max-width: 350px; 
+            background-color: #16A64B; color: white; padding: 15px 20px; font-size: 16px; font-weight: bold; 
+            border-radius: 12px; border: none; cursor: pointer; display: none; width: 80%; max-width: 350px; 
             box-shadow: 0px 4px 15px rgba(22, 166, 75, 0.4); 
         }
         .btn-link:active { background-color: #11823B; transform: scale(0.98); }
         
-        .spinner { border: 4px solid rgba(61, 228, 130, 0.3); width: 50px; height: 50px; border-radius: 50%; border-left-color: #3DE482; animation: spin 1s linear infinite; margin-bottom: 20px; display: none; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         canvas { display: none; } 
     </style>
 </head>
 <body>
 
-    <div id="spinner" class="spinner"></div>
-    <div id="statusLog" class="log">Yükleniyor...</div>
-    
-    <!-- CLOMOSY İÇİNDE GÖSTERİLECEK BYPASS BUTONU -->
-    <button id="bypassBtn" class="btn-link">🚀 Chrome'da Aç ve İndir</button>
+    <div class="mobile-rotate-container">
+        <div id="statusLog" class="log">Taktik İşleniyor...</div>
+        <img id="finalImage" alt="Rendered Tactic" />
+        
+        <div id="infoText" class="info-text">
+            Sistem güvenliği nedeniyle otomatik indirme engellendi.<br><br>
+            Aşağıdaki butona tıklayıp linki kopyalayın ve <b>Chrome/Safari</b> tarayıcınıza yapıştırın. Resim anında inecektir!
+        </div>
+
+        <button id="copyBtn" class="btn-link">🔗 İndirme Linkini Kopyala</button>
+    </div>
 
     <canvas id="renderCanvas"></canvas>
 
@@ -38,8 +49,8 @@
         const canvas = document.getElementById('renderCanvas');
         const ctx = canvas.getContext('2d');
         const statusLog = document.getElementById('statusLog');
-        const bypassBtn = document.getElementById('bypassBtn');
-        const spinner = document.getElementById('spinner');
+        const infoText = document.getElementById('infoText');
+        const copyBtn = document.getElementById('copyBtn');
 
         const ASSETS = { Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg', Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png' };
         const loadedImages = {};
@@ -53,7 +64,7 @@
             });
         }
 
-        // ÖZGÜR TARAYICI İÇİN OTOMATİK İNDİRME MANTIĞI
+        // Özgür tarayıcıda otomatik indir
         function forceDownload(jsonPayload) {
             try {
                 const elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
@@ -89,17 +100,31 @@
                 canvas.toBlob((blob) => {
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
-                    link.download = 'Nalcaci_Taktik_' + new Date().getTime() + '.png';
+                    link.download = 'Nalcaci_Taktik.png';
                     link.href = url;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                     
-                    spinner.style.display = 'none';
-                    statusLog.innerHTML = "✅ İndirme Başarılı!<br><br><span style='font-size:16px; color:#ffffff;'>Bu sekmeyi kapatıp uygulamaya dönebilirsiniz.</span>";
+                    statusLog.innerText = "✅ İndirme Başarılı!";
+                    infoText.innerHTML = "Bu sekmeyi kapatabilirsiniz.";
+                    infoText.style.display = 'block';
+                    infoText.style.color = "#3DE482";
                 }, 'image/png');
 
             } catch (error) { statusLog.innerText = "Hata: " + error.message; }
+        }
+
+        // Kopyalama Fonksiyonu
+        function fallbackCopyTextToClipboard(text) {
+            var textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";  // Avoid scrolling to bottom
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try { document.execCommand('copy'); } catch (err) { }
+            document.body.removeChild(textArea);
         }
 
         window.onload = () => {
@@ -109,30 +134,38 @@
 
             if (dataParam) {
                 if (isDownloadMode) {
-                    // 2. AŞAMA: DIŞ TARAYICIDAYIZ (CHROME/SAFARI) -> ÇİZ VE OTOMATİK İNDİR
-                    spinner.style.display = 'block';
-                    statusLog.innerText = "Taktik İşleniyor ve İndiriliyor...";
+                    // DIŞ TARAYICIDAYIZ (CHROME/SAFARI): ÇİZ VE OTOMATİK İNDİR
                     preloadImages(() => forceDownload(dataParam));
                 } else {
-                    // 1. AŞAMA: CLOMOSY WEBVIEW İÇİNDEYİZ -> BYPASS BUTONUNU GÖSTER
-                    spinner.style.display = 'none';
-                    statusLog.innerText = "Taktik İndirilmeye Hazır!";
-                    bypassBtn.style.display = 'block';
-                    
-                    bypassBtn.onclick = () => {
-                        // Linke download=1 ekle
-                        const rawUrl = "kaanl0.github.io/Clomosy_Nalcaci_Project/IMGSaverMobile.html?data=" + encodeURIComponent(dataParam) + "&download=1";
+                    // CLOMOSY WEBVIEW İÇİNDEYİZ: LİNK KOPYALAMA ARAYÜZÜNÜ HAZIRLA
+                    preloadImages(() => {
+                        // Önce resmi ekranda gösterelim ki ne indireceğini görsün
+                        const bgImg = loadedImages.Background;
+                        canvas.width = bgImg.width; canvas.height = bgImg.height;
+                        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+                        const finalImg = document.getElementById('finalImage');
+                        finalImg.src = canvas.toDataURL();
+                        finalImg.style.display = 'block';
                         
-                        // ANDROID INTENT (WebView'ı yıkar geçer ve Chrome'u zorla açar)
-                        const androidIntent = "intent://" + rawUrl + "#Intent;scheme=https;package=com.android.chrome;end";
+                        statusLog.innerText = "Taktik Hazır!";
+                        infoText.style.display = 'block';
+                        copyBtn.style.display = 'block';
                         
-                        window.location.href = androidIntent;
-                        
-                        // iOS Safari ve Hata Durumları İçin Fallback (Yedek Plan)
-                        setTimeout(() => {
-                            window.top.location.href = "https://" + rawUrl;
-                        }, 1000);
-                    };
+                        // Kopyalama işlemi
+                        copyBtn.onclick = () => {
+                            const rawUrl = "https://kaanl0.github.io/Clomosy_Nalcaci_Project/IMGSaverMobile.html?data=" + encodeURIComponent(dataParam) + "&download=1";
+                            
+                            if (navigator.clipboard && window.isSecureContext) {
+                                navigator.clipboard.writeText(rawUrl).then(() => {
+                                    copyBtn.innerText = "✅ Kopyalandı! Tarayıcıya Yapıştırın";
+                                });
+                            } else {
+                                fallbackCopyTextToClipboard(rawUrl);
+                                copyBtn.innerText = "✅ Kopyalandı! Tarayıcıya Yapıştırın";
+                            }
+                            copyBtn.style.backgroundColor = "#209400";
+                        };
+                    });
                 }
             }
         };
