@@ -3,45 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mobil Taktik İndirici</title>
+    <title>Taktik İndirici</title>
     <style>
-        body { 
-            background-color: #08160D; color: #ffffff; font-family: sans-serif; margin: 0; padding: 20px; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; box-sizing: border-box; text-align: center; 
+        body {
+            background-color: #08160D;
+            color: #ffffff;
+            font-family: sans-serif;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
         }
-        .mobile-rotate-container {
-            transform: rotate(90deg); transform-origin: center; width: 100vh; height: 100vw;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box;
-        }
-        #finalImage {
-            max-width: 90%; max-height: 55vh; border: 3px solid #3DE482; border-radius: 10px; display: none; box-shadow: 0px 4px 15px rgba(0,0,0,0.6); object-fit: contain; margin-bottom: 20px;
-        }
-        .log { color: #3DE482; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
-        .info-text { color: #F59E0B; font-size: 14px; margin-bottom: 20px; display: none; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;}
-        
-        .btn-link { 
-            background-color: #16A64B; color: white; padding: 15px 20px; font-size: 16px; font-weight: bold; 
-            border-radius: 12px; border: none; cursor: pointer; display: none; width: 80%; max-width: 350px; 
-            box-shadow: 0px 4px 15px rgba(22, 166, 75, 0.4); 
-        }
-        .btn-link:active { background-color: #11823B; transform: scale(0.98); }
-        
+        .log { color: #3DE482; font-size: 22px; font-weight: bold; margin-bottom: 20px; }
+        .sub-log { color: #FFFFFF; font-size: 16px; line-height: 1.5; }
+        .spinner { border: 4px solid rgba(61, 228, 130, 0.3); width: 50px; height: 50px; border-radius: 50%; border-left-color: #3DE482; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         canvas { display: none; } 
     </style>
 </head>
 <body>
 
-    <div class="mobile-rotate-container">
-        <div id="statusLog" class="log">Taktik İşleniyor...</div>
-        <img id="finalImage" alt="Rendered Tactic" />
-        
-        <div id="infoText" class="info-text">
-            Sistem güvenliği nedeniyle otomatik indirme engellendi.<br><br>
-            Aşağıdaki butona tıklayıp linki kopyalayın ve <b>Chrome/Safari</b> tarayıcınıza yapıştırın. Resim anında inecektir!
-        </div>
-
-        <button id="copyBtn" class="btn-link">🔗 İndirme Linkini Kopyala</button>
-    </div>
+    <div class="spinner" id="spinner"></div>
+    <div id="statusLog" class="log">Taktik İşleniyor...</div>
+    <div id="subLog" class="sub-log">Lütfen indirme işlemi bitene kadar bekleyin.</div>
 
     <canvas id="renderCanvas"></canvas>
 
@@ -49,41 +38,54 @@
         const canvas = document.getElementById('renderCanvas');
         const ctx = canvas.getContext('2d');
         const statusLog = document.getElementById('statusLog');
-        const infoText = document.getElementById('infoText');
-        const copyBtn = document.getElementById('copyBtn');
+        const subLog = document.getElementById('subLog');
+        const spinner = document.getElementById('spinner');
 
-        const ASSETS = { Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg', Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png' };
+        const ASSETS = {
+            Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
+            Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png'
+        };
         const loadedImages = {};
 
         function preloadImages(callback) {
-            let loadedCount = 0; const keys = Object.keys(ASSETS);
+            let loadedCount = 0;
+            const keys = Object.keys(ASSETS);
             keys.forEach(key => {
-                const img = new Image(); img.crossOrigin = "Anonymous"; 
+                const img = new Image();
+                img.crossOrigin = "Anonymous"; 
                 img.onload = () => { loadedImages[key] = img; loadedCount++; if (loadedCount === keys.length) callback(); };
+                img.onerror = () => { statusLog.innerText = "Hata oluştu!"; spinner.style.display = 'none'; };
                 img.src = ASSETS[key];
             });
         }
 
-        // Özgür tarayıcıda otomatik indir
-        function forceDownload(jsonPayload) {
+        function renderAndDownload(jsonPayload) {
             try {
                 const elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
                 const bgImg = loadedImages.Background;
-                canvas.width = bgImg.width; canvas.height = bgImg.height;
+                
+                canvas.width = bgImg.width;
+                canvas.height = bgImg.height;
                 ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
                 elements.forEach(el => {
-                    const cx = el.x * canvas.width; const cy = el.y * canvas.height;
-                    const w = el.width * canvas.width; const h = el.height * canvas.height;
+                    const cx = el.x * canvas.width;
+                    const cy = el.y * canvas.height;
+                    const w = el.width * canvas.width;
+                    const h = el.height * canvas.height;
                     const angleRad = el.angle * (Math.PI / 180);
 
-                    ctx.save(); ctx.translate(cx, cy); ctx.rotate(angleRad);
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    ctx.rotate(angleRad);
 
                     if (el.type === 'Ball' && loadedImages.Ball) {
                         ctx.drawImage(loadedImages.Ball, -w / 2, -h / 2, w, h);
                     } else if (el.type === 'Player' || el.type === 'Opponent') {
-                        ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
-                        ctx.fillStyle = el.type === 'Player' ? "#3B82F6" : "#EF4444"; ctx.fill();
+                        ctx.beginPath();
+                        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
+                        ctx.fillStyle = el.type === 'Player' ? "#3B82F6" : "#EF4444";
+                        ctx.fill();
                         ctx.lineWidth = 2; ctx.strokeStyle = "#FFFFFF"; ctx.stroke();
                     } else if (el.type === 'Line' || el.type === 'Arrow') { 
                         ctx.fillStyle = "#EF4444"; ctx.fillRect(-w / 2, -h / 2, w, Math.max(h, 4)); 
@@ -97,77 +99,33 @@
                     ctx.restore();
                 });
 
-                canvas.toBlob((blob) => {
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.download = 'Nalcaci_Taktik.png';
-                    link.href = url;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    statusLog.innerText = "✅ İndirme Başarılı!";
-                    infoText.innerHTML = "Bu sekmeyi kapatabilirsiniz.";
-                    infoText.style.display = 'block';
-                    infoText.style.color = "#3DE482";
-                }, 'image/png');
+                // ÖZGÜR TARAYICI İÇİN OTOMATİK İNDİRME TETİKLEYİCİSİ
+                const dataURL = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.download = 'Nalcaci_Taktik_' + new Date().getTime() + '.png';
+                link.href = dataURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
 
-            } catch (error) { statusLog.innerText = "Hata: " + error.message; }
-        }
+                // İşlem bitince ekranı güncelle
+                spinner.style.display = 'none';
+                statusLog.innerText = "✅ İndirme Başarılı!";
+                subLog.innerHTML = "Taktik resmi telefonunuza kaydedildi.<br><br><b>Bu sekmeyi kapatıp uygulamaya dönebilirsiniz.</b>";
 
-        // Kopyalama Fonksiyonu
-        function fallbackCopyTextToClipboard(text) {
-            var textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";  // Avoid scrolling to bottom
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try { document.execCommand('copy'); } catch (err) { }
-            document.body.removeChild(textArea);
+            } catch (error) {
+                statusLog.innerText = "Render Hatası: " + error.message;
+                statusLog.style.color = "#EF4444";
+                spinner.style.display = 'none';
+            }
         }
 
         window.onload = () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const dataParam = urlParams.get('data');
-            const isDownloadMode = urlParams.get('download');
-
-            if (dataParam) {
-                if (isDownloadMode) {
-                    // DIŞ TARAYICIDAYIZ (CHROME/SAFARI): ÇİZ VE OTOMATİK İNDİR
-                    preloadImages(() => forceDownload(dataParam));
-                } else {
-                    // CLOMOSY WEBVIEW İÇİNDEYİZ: LİNK KOPYALAMA ARAYÜZÜNÜ HAZIRLA
-                    preloadImages(() => {
-                        // Önce resmi ekranda gösterelim ki ne indireceğini görsün
-                        const bgImg = loadedImages.Background;
-                        canvas.width = bgImg.width; canvas.height = bgImg.height;
-                        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-                        const finalImg = document.getElementById('finalImage');
-                        finalImg.src = canvas.toDataURL();
-                        finalImg.style.display = 'block';
-                        
-                        statusLog.innerText = "Taktik Hazır!";
-                        infoText.style.display = 'block';
-                        copyBtn.style.display = 'block';
-                        
-                        // Kopyalama işlemi
-                        copyBtn.onclick = () => {
-                            const rawUrl = "https://kaanl0.github.io/Clomosy_Nalcaci_Project/IMGSaverMobile.html?data=" + encodeURIComponent(dataParam) + "&download=1";
-                            
-                            if (navigator.clipboard && window.isSecureContext) {
-                                navigator.clipboard.writeText(rawUrl).then(() => {
-                                    copyBtn.innerText = "✅ Kopyalandı! Tarayıcıya Yapıştırın";
-                                });
-                            } else {
-                                fallbackCopyTextToClipboard(rawUrl);
-                                copyBtn.innerText = "✅ Kopyalandı! Tarayıcıya Yapıştırın";
-                            }
-                            copyBtn.style.backgroundColor = "#209400";
-                        };
-                    });
-                }
-            }
+            preloadImages(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const dataParam = urlParams.get('data');
+                if (dataParam) renderAndDownload(dataParam);
+            });
         };
     </script>
 </body>
