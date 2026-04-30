@@ -39,26 +39,26 @@
             display: none;
             box-shadow: 0px 4px 15px rgba(0,0,0,0.6);
             object-fit: contain;
+            /* YENİ: Telefondaki basılı tutma (Long Press) menüsünün kesin çıkması için: */
+            pointer-events: auto;
+            -webkit-touch-callout: default;
         }
 
-        button {
-            background-color: #3B82F6;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 10px;
-            cursor: pointer;
-            margin-top: 20px;
-            width: 80%;
-            max-width: 350px;
-            display: none;
-            box-shadow: 0px 4px 10px rgba(59, 130, 246, 0.4);
-        }
-        button:active { background-color: #2563EB; transform: scale(0.98); }
-        
         .log { color: #3DE482; font-size: 18px; font-weight: bold; text-align: center; margin-bottom: 15px; }
+        
+        /* YENİ: Kullanıcıyı yönlendiren talimat yazısı */
+        .instruction { 
+            color: #F59E0B; 
+            font-size: 16px; 
+            font-weight: bold; 
+            text-align: center; 
+            margin-top: 20px; 
+            display: none;
+            background-color: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
         canvas { display: none; } 
     </style>
 </head>
@@ -67,7 +67,7 @@
     <div class="mobile-rotate-container">
         <div id="statusLog" class="log">Taktik İşleniyor... Lütfen Bekleyin.</div>
         <img id="finalImage" alt="Rendered Tactic" />
-        <button id="shareBtn">📸 Galeriye Kaydet / Paylaş</button>
+        <div id="instruction" class="instruction">👆<br>Galerinize kaydetmek veya paylaşmak için<br>resmin üzerine basılı tutun!</div>
     </div>
 
     <canvas id="renderCanvas"></canvas>
@@ -76,6 +76,7 @@
         const canvas = document.getElementById('renderCanvas');
         const ctx = canvas.getContext('2d');
         const statusLog = document.getElementById('statusLog');
+        const instruction = document.getElementById('instruction');
 
         const ASSETS = {
             Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
@@ -134,28 +135,16 @@
                     ctx.restore();
                 });
 
+                // Görseli oluştur ve <img> etiketine aktar
                 const dataURL = canvas.toDataURL("image/png");
                 const finalImg = document.getElementById('finalImage');
                 finalImg.src = dataURL;
-                finalImg.style.display = 'block';
-                statusLog.style.display = 'none';
-
-                const shareBtn = document.getElementById('shareBtn');
-                shareBtn.style.display = 'block';
                 
-                shareBtn.onclick = () => {
-                    canvas.toBlob((blob) => {
-                        const file = new File([blob], 'Nalcaci_Taktik.png', { type: 'image/png' });
-                        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                            navigator.share({
-                                title: 'Taktik Tahtası',
-                                files: [file]
-                            }).catch(err => console.error(err));
-                        } else {
-                            alert("Cihazınız doğrudan paylaşımı desteklemiyor.");
-                        }
-                    }, 'image/png');
-                };
+                // Animasyonlu Gösterim
+                finalImg.style.display = 'block';
+                statusLog.style.display = 'none'; // Bekleyin yazısını gizle
+                instruction.style.display = 'block'; // Basılı tut uyarısını göster
+
             } catch (error) {
                 statusLog.innerText = "Hata: " + error.message;
             }
