@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clomosy Tactic Renderer</title>
+    <title>Clomosy Taktik Tahtası</title>
     <style>
         body {
             background-color: #071109;
@@ -38,7 +38,7 @@
             border: 4px solid #3DE482;
             border-radius: 4px;
             margin-top: 15px;
-            display: none;
+            display: none; /* Çizim bitene kadar gizli kalacak */
         }
         button {
             background-color: #16A64B;
@@ -59,20 +59,22 @@
 <body>
 
     <div class="container">
-        <h2>Tactic Renderer</h2>
-        <div id="statusLog" class="log">Loading resources...</div>
+        <h2>Taktik Tahtası</h2>
+        <div id="statusLog" class="log">Kaynaklar yükleniyor...</div>
         
         <canvas id="renderCanvas"></canvas>
         
-        <img id="finalImage" alt="Rendered Tactic" />
+        <!-- Çizilen görsel burada gösterilecek -->
+        <img id="finalImage" alt="Oluşturulan Taktik" />
         <br>
-        <button id="downloadBtn" style="display: none;" onclick="downloadScreenshot()">Download to Phone</button>
+        <button id="downloadBtn" style="display: none;" onclick="downloadScreenshot()">Telefona İndir</button>
     </div>
 
 <script>
         const canvas = document.getElementById('renderCanvas');
         const ctx = canvas.getContext('2d');
         const statusLog = document.getElementById('statusLog');
+        const finalImage = document.getElementById('finalImage');
 
         // We only need to preload the background and the ball now
         const ASSETS = {
@@ -162,14 +164,20 @@
 
                 // AUTO DOWNLOAD LOGIC
                 const dataURL = canvas.toDataURL("image/png");
+                
+                // --- YENİ EKLENEN KISIM: Resmi Ekranda Gösterme ---
+                finalImage.src = dataURL;
+                finalImage.style.display = 'block'; // Gizli olan resmi görünür yapıyoruz
+
+                // İndirme işlemi aynı şekilde devam ediyor
                 const link = document.createElement('a');
                 link.download = 'Taktik_Tahtasi.png';
                 link.href = dataURL;
                 link.click(); 
 
-                statusLog.innerText = "Downloaded successfully!";
+                statusLog.innerText = "Görsel başarıyla oluşturuldu ve indirildi!";
             } catch (error) {
-                statusLog.innerText = "Render Error: " + error.message;
+                statusLog.innerText = "Çizim Hatası: " + error.message;
             }
         }
 
