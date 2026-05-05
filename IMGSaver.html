@@ -39,33 +39,47 @@
             margin-top: 15px;
             display: none; 
         }
-        .action-btn {
-            background-color: #16A64B;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            width: 100%;
-            max-width: 300px;
-        }
-        .action-btn:hover { background-color: #209400; }
-        .log { color: #3DE482; font-family: sans-serif; margin-top: 10px; font-size: 15px; line-height: 1.5; }
+        .log { color: #3DE482; font-family: sans-serif; margin-top: 10px; font-size: 16px; line-height: 1.5; font-weight:bold; }
         .error { color: #EF4444; }
+        
+        /* MANUEL YAPIŞTIRMA KUTUSU TASARIMI */
+        #pasteArea {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #0D1F14;
+            border: 2px dashed #3DE482;
+            border-radius: 10px;
+        }
+        #dataInput {
+            width: 90%;
+            height: 60px;
+            margin-top: 10px;
+            background-color: #08160D;
+            border: 1px solid #173522;
+            color: #ffffff;
+            font-size: 16px;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            resize: none;
+        }
+        #dataInput:focus {
+            outline: none;
+            border-color: #3DE482;
+        }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h2>Taktik Tahtası</h2>
-        <div id="statusLog" class="log">Taktik verisi hafızaya kopyalandı.<br>Görseli indirmek için aşağıdaki butona tıklayın.</div>
+        <div id="statusLog" class="log">Taktik başarıyla kopyalandı! ✅</div>
         
-        <!-- Tarayıcı Güvenliğini Aşmak İçin Tıklama Butonu -->
-        <button id="pasteBtn" class="action-btn" onclick="readFromClipboard()">📸 Görseli Oluştur ve İndir</button>
+        <!-- YENİ: İZİN İSTEMEYEN YAPIŞTIRMA ALANI -->
+        <div id="pasteArea">
+            <p style="color: #F59E0B; font-weight: bold; margin: 0 0 10px 0;">👇 Görseli indirmek için aşağıdaki kutuya basılı tutun ve "Yapıştır" deyin 👇</p>
+            <textarea id="dataInput" placeholder="Buraya basılı tutun ve Yapıştırın..."></textarea>
+        </div>
         
         <canvas id="renderCanvas"></canvas>
         <img id="finalImage" alt="Oluşturulan Taktik" />
@@ -76,10 +90,12 @@
         const ctx = canvas.getContext('2d');
         const statusLog = document.getElementById('statusLog');
         const finalImage = document.getElementById('finalImage');
-        const pasteBtn = document.getElementById('pasteBtn');
+        
+        const pasteArea = document.getElementById('pasteArea');
+        const dataInput = document.getElementById('dataInput');
 
         const ASSETS = {
-            Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/dikeysaha2.jpg', // Mobil saha
+            Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/dikeysaha2.jpg', // Mobil Saha
             Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png'
         };
         const loadedImages = {};
@@ -102,10 +118,36 @@
                 img.src = ASSETS[key];
             });
         }
-        preloadImages(); // Sayfa açılır açılmaz yüklemeye başla
+        preloadImages(); 
+
+        // =======================================================
+        // YENİ MANTIK: KUTUYA METİN GİRİLDİĞİ AN OTOMATİK ÇALIŞIR
+        // =======================================================
+        dataInput.addEventListener('input', function() {
+            const pastedData = dataInput.value.trim();
+            
+            // Kullanıcı veriyi yapıştırdıysa ve bu bizim JSON ise
+            if (pastedData.includes("type") && pastedData.includes("x") && pastedData.includes("y")) {
+                pasteArea.style.display = 'none'; // Kutu görevini yaptı, gizle
+                statusLog.innerText = "Veri alındı, görsel çiziliyor...";
+                
+                // Biraz bekle ki "Çiziliyor" yazısı ekranda görünebilsin
+                setTimeout(() => {
+                    renderAndDownload(pastedData);
+                }, 100);
+            } else {
+                statusLog.className = "log error";
+                statusLog.innerText = "Hatalı veya eksik veri yapıştırdınız! Lütfen uygulamaya dönüp tekrar 'SS Al' deyin.";
+                dataInput.value = ''; // Yanlış veriyi temizle
+            }
+        });
 
         function renderAndDownload(jsonPayload) {
             try {
+                if (!isAssetsLoaded) {
+                    throw new Error("Görseller henüz yüklenmedi, lütfen sayfayı yenileyip tekrar yapıştırın.");
+                }
+
                 const elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
                 const bgImg = loadedImages.Background;
                 canvas.width = bgImg.width;
@@ -152,22 +194,18 @@
                         ctx.lineWidth = Math.max(h, 3); 
                         ctx.lineCap = "round"; 
                         ctx.lineJoin = "round"; 
-
                         const startX = -w / 2;
                         const endX = w / 2;
                         
                         ctx.beginPath();
                         ctx.moveTo(startX, 0);
                         ctx.lineTo(endX, 0);
-
                         const headLength = 15; 
                         const headAngle = Math.PI / 6; 
-
                         ctx.moveTo(endX, 0);
                         ctx.lineTo(endX - headLength * Math.cos(headAngle), -headLength * Math.sin(headAngle));
                         ctx.moveTo(endX, 0);
                         ctx.lineTo(endX - headLength * Math.cos(headAngle), headLength * Math.sin(headAngle));
-
                         ctx.stroke();
                     }
                     else if (el.type === 'Rect') { 
@@ -204,47 +242,12 @@
                 link.href = dataURL;
                 link.click(); 
 
-                statusLog.innerText = "Harika! Görsel başarıyla cihazınıza indirildi.";
-                
-                // Güvenlik: İşlem bitince cihaz panosunu temizle
-                navigator.clipboard.writeText("");
+                statusLog.innerText = "Harika! Görsel başarıyla galerinize indirildi.";
                 
             } catch (error) {
                 statusLog.className = "log error";
-                statusLog.innerText = "Kritik Çizim Hatası: " + error.message;
-                pasteBtn.style.display = 'inline-block';
-            }
-        }
-
-        // =======================================================
-        // GÜVENLİ: BUTONA TIKLANDIĞINDA PANODAN VERİ OKUMA
-        // =======================================================
-        async function readFromClipboard() {
-            if (!isAssetsLoaded) {
-                statusLog.innerText = "Saha görselleri yükleniyor, lütfen 1 saniye bekleyip tekrar tıklayın...";
-                return;
-            }
-
-            pasteBtn.style.display = 'none'; // Tıklanınca butonu gizle
-            statusLog.innerText = "Lütfen tarayıcının panoya (yapıştırmaya) erişmesine 'İzin Ver' diyerek onaylayın...";
-
-            try {
-                // Tarayıcı bu noktada kullanıcıya "İzin verilsin mi?" diye sorar (Mobilde çok önemlidir)
-                const clipboardText = await navigator.clipboard.readText();
-                
-                // Kopyalanan veri bizim JSON mu?
-                if (clipboardText && clipboardText.includes("type")) {
-                     statusLog.innerText = "Veri alındı, taktik tahtası çiziliyor...";
-                     renderAndDownload(clipboardText);
-                } else {
-                     statusLog.className = "log error";
-                     statusLog.innerText = "Hafızada geçerli bir taktik verisi bulunamadı! Uygulamaya dönüp 'SS Al' butonuna tekrar basın.";
-                     pasteBtn.style.display = 'inline-block';
-                }
-            } catch (err) {
-                statusLog.className = "log error";
-                statusLog.innerText = "Panoya erişim engellendi. Lütfen izin verin.";
-                pasteBtn.style.display = 'inline-block';
+                statusLog.innerText = "Çizim Hatası: " + error.message;
+                pasteArea.style.display = 'block'; // Hata olursa kutuyu geri getir
             }
         }
     </script>
