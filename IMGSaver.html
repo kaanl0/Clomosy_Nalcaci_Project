@@ -39,18 +39,6 @@
             margin-top: 15px;
             display: none; 
         }
-        button {
-            background-color: #16A64B;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            font-weight: bold;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-        button:hover { background-color: #209400; }
         .log { color: #3DE482; font-family: monospace; margin-top: 10px; }
         .error { color: #EF4444; }
     </style>
@@ -59,13 +47,10 @@
 
     <div class="container">
         <h2>Taktik Tahtası</h2>
-        <div id="statusLog" class="log">Kaynaklar yükleniyor...</div>
+        <div id="statusLog" class="log">Görsel İşleniyor...</div>
         
         <canvas id="renderCanvas"></canvas>
-        
         <img id="finalImage" alt="Oluşturulan Taktik" />
-        <br>
-        <button id="downloadBtn" style="display: none;" onclick="downloadScreenshot()">Telefona İndir</button>
     </div>
 
 <script>
@@ -74,10 +59,12 @@
         const statusLog = document.getElementById('statusLog');
         const finalImage = document.getElementById('finalImage');
 
-        // YENİ: MOBİL / PC AYRIMI
+        // =======================================================
+        // CİHAZ ALGILAYICI (Mobil / PC)
+        // =======================================================
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
 
-        // DİKEY SAHA MOBİL İÇİN, YATAY SAHA PC İÇİN OTOMATİK SEÇİLİR!
+        // Sahayı cihaza göre dinamik atıyoruz
         const ASSETS = {
             Background: isMobile 
                         ? 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/dikeysaha2.jpg' 
@@ -98,7 +85,6 @@
                 img.onload = () => {
                     loadedImages[key] = img;
                     loadedCount++;
-
                     if (loadedCount === keys.length) {
                         callback();
                     }
@@ -115,58 +101,72 @@
 
         function renderAndDownload(jsonPayload) {
             try {
-                const elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
+                // Delphi'den gelen %22 işaretlerini her ihtimale karşı " işaretine çevir
+                const cleanJsonStr = typeof jsonPayload === 'string' ? jsonPayload.replace(/%22/g, '"') : jsonPayload;
+                const elements = typeof cleanJsonStr === 'string' ? JSON.parse(cleanJsonStr) : cleanJsonStr;
 
                 if (!Array.isArray(elements)) {
-                    statusLog.innerText = "JSON formatı hatalı. Veri liste şeklinde olmalı.";
+                    statusLog.innerText = "JSON formatı hatalı.";
                     statusLog.classList.add("error");
                     return;
                 }
 
                 const bgImg = loadedImages.Background;
-
                 canvas.width = bgImg.width;
                 canvas.height = bgImg.height;
 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-                // 1. Arka planı çiz
                 ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-                // 2. Elementleri çiz
+                // Elementleri Çiz
                 elements.forEach(el => {
-                    
-                    // --- KOORDİNAT VE AÇI DÖNÜŞÜM MOTORU ---
-                    let cx, cy, w, h, angleRad;
+                    let cx, cy, w, h, angleDeg;
 
+                    const relX = Number(el.x);
+                    const relY = Number(el.y);
+                    const relW = Number(el.width);
+                    const relH = Number(el.height);
+                    const relAngle = Number(el.angle || 0);
+
+                    // --- KUSURSUZ MATEMATİK ÇEVİRİCİ ---
                     if (isMobile) {
-                        // JSON verisi YATAY formattadır, DİKEY sahaya kusursuz oturtmak için ters çeviriyoruz:
-                        cx = (1.0 - Number(el.y)) * canvas.width;
-                        cy = Number(el.x) * canvas.height;
+                        cx = (1.0 - relY) * canvas.width;
+                        cy = relX * canvas.height;
                         
-                        // Yükseklik ve Genişliği yer değiştiriyoruz
-                        w = Number(el.height) * canvas.width;
-                        h = Number(el.width) * canvas.height;
+                        // Delphi tarafındaki çapraz bölmeyi tersine çeviriyoruz
+                        w = relW * canvas.height; 
+                        h = relH * canvas.width;  
                         
-                        if (el.type === 'Text') {
-                            angleRad = 90 * (Math.PI / 180); // Mobilde yazılar SADECE 90 derece döner!
-                        } else {
-                            angleRad = (Number(el.angle || 0) + 90) * (Math.PI / 180);
-                        }
+                        angleDeg = el.type === 'Text' ? 0 : relAngle + 90;
                     } 
                     else {
-                        // Bilgisayarda her şey olduğu gibi kalır (Yatay saha)
-                        cx = Number(el.x) * canvas.width;
-                        cy = Number(el.y) * canvas.height;
-                        w = Number(el.width) * canvas.width;
-                        h = Number(el.height) * canvas.height;
+                        cx = relX * canvas.width;
+                        cy = relY * canvas.height;
                         
-                        if (el.type === 'Text') {
-                            angleRad = 0; // PC'de yazılar düzdür
-                        } else {
-                            angleRad = Number(el.angle || 0) * (Math.PI / 180);
-                        }
+                        w = relW * canvas.width;
+                        h = relH * canvas.height;
+                        
+                        angleDeg = el.type === 'Text' ? 0 : relAngle;
                     }
+
+                    // --- BOYUTLARI (W ve H) DELPHI'DEKİ GİBİ SABİTLE ---
+                    if (el.type === 'Player' || el.type === 'Opponent') {
+                        w = isMobile ? 36 : 60;
+                        h = isMobile ? 36 : 60;
+                    } 
+                    else if (el.type === 'Ball') {
+                        w = isMobile ? 24 : 40;
+                        h = isMobile ? 24 : 40;
+                    } 
+                    else if (el.type === 'Text') {
+                        w = 250;
+                        h = 30;
+                    } 
+                    else if (el.type === 'Line' || el.type === 'Arrow') {
+                        h = 4; // Çizgi ve ok kalınlığı daima sabit 4 piksel
+                    }
+
+                    const angleRad = angleDeg * (Math.PI / 180);
 
                     ctx.save();
                     ctx.translate(cx, cy);
@@ -176,36 +176,30 @@
                     if (el.type === 'Ball' && loadedImages.Ball) {
                         ctx.drawImage(loadedImages.Ball, -w / 2, -h / 2, w, h);
                     } 
-                    
-                    // --- OYUNCU VE RAKİP ---
+                    // --- OYUNCU VE RAKİP (ORİJİNAL MAVİ/KIRMIZI YUVARLAKLAR) ---
                     else if (el.type === 'Player' || el.type === 'Opponent') {
                         ctx.beginPath();
                         ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
-                        
                         ctx.fillStyle = el.type === 'Player' ? "#3B82F6" : "#EF4444";
                         ctx.fill();
-                        
                         ctx.lineWidth = 2; 
                         ctx.strokeStyle = "#FFFFFF"; 
                         ctx.stroke();
                     } 
-
                     // --- DÜZ ÇİZGİ ---
                     else if (el.type === 'Line') { 
                         ctx.strokeStyle = "#EF4444"; 
-                        ctx.lineWidth = Math.max(h, 3);
+                        ctx.lineWidth = h; // 4 piksel
                         ctx.lineCap = "round";
-                        
                         ctx.beginPath();
                         ctx.moveTo(-w / 2, 0);
                         ctx.lineTo(w / 2, 0);
                         ctx.stroke();
                     } 
-
                     // --- OK ---
                     else if (el.type === 'Arrow') {
                         ctx.strokeStyle = "#EF4444"; 
-                        ctx.lineWidth = Math.max(h, 3); 
+                        ctx.lineWidth = h; // 4 piksel
                         ctx.lineCap = "round";
                         ctx.lineJoin = "round";
 
@@ -213,35 +207,27 @@
                         const endX = w / 2;
                         
                         ctx.beginPath();
-
                         ctx.moveTo(startX, 0);
                         ctx.lineTo(endX, 0);
 
-                        const headLength = 15;
-                        const headAngle = Math.PI / 6;
+                        const headLength = 20; // Ok kanadı uzunluğu
+                        const headAngle = 30 * (Math.PI / 180); // 30 derece (150 ve 210'un karşılığı)
 
+                        // Kanat 1
                         ctx.moveTo(endX, 0);
-                        ctx.lineTo(
-                            endX - headLength * Math.cos(headAngle),
-                            -headLength * Math.sin(headAngle)
-                        );
-
+                        ctx.lineTo(endX - headLength * Math.cos(headAngle), -headLength * Math.sin(headAngle));
+                        // Kanat 2
                         ctx.moveTo(endX, 0);
-                        ctx.lineTo(
-                            endX - headLength * Math.cos(headAngle),
-                            headLength * Math.sin(headAngle)
-                        );
+                        ctx.lineTo(endX - headLength * Math.cos(headAngle), headLength * Math.sin(headAngle));
 
                         ctx.stroke();
-                    }
-
+                    } 
                     // --- DİKDÖRTGEN ---
                     else if (el.type === 'Rect') { 
                         ctx.strokeStyle = "#EF4444"; 
                         ctx.lineWidth = 3; 
                         ctx.strokeRect(-w / 2, -h / 2, w, h); 
                     } 
-
                     // --- ÇEMBER ---
                     else if (el.type === 'Circle') { 
                         ctx.strokeStyle = "#EF4444"; 
@@ -250,21 +236,28 @@
                         ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI); 
                         ctx.stroke(); 
                     } 
-
                     // --- YAZI ---
                     else if (el.type === 'Text' && el.text_content) { 
-                        const fontSize = isMobile ? 35 : 30; // Cihaza göre boyut
+                        // Mobilde 14, PC'de 30 Punto
+                        const fontSize = isMobile ? 14 : 30;
+
                         ctx.fillStyle = "#FFFFFF"; 
                         ctx.font = "bold " + fontSize + "px Arial"; 
                         ctx.textAlign = "center"; 
                         ctx.textBaseline = "middle"; 
+                        
+                        // Mobilde yazının düzgün okunması için 90 derece döndür
+                        if (isMobile) {
+                            ctx.rotate(90 * (Math.PI / 180));
+                        }
+                        
                         ctx.fillText(el.text_content, 0, 0); 
                     }
 
                     ctx.restore();
                 });
 
-                // Görseli oluştur ve indir
+                // Sağlıklı indirme işlemi
                 canvas.toBlob((blob) => {
                     if (!blob) {
                         statusLog.innerText = "Görsel oluşturulamadı.";
@@ -273,12 +266,11 @@
                     }
 
                     const blobUrl = URL.createObjectURL(blob);
-
                     finalImage.src = blobUrl;
                     finalImage.style.display = 'block';
 
                     const link = document.createElement('a');
-                    link.download = 'Taktik_Tahtasi.png';
+                    link.download = 'Nalcaci_Taktik.png';
                     link.href = blobUrl;
                     link.click();
 
@@ -295,6 +287,7 @@
             preloadImages(() => {
                 let dataParam = null;
 
+                // Hash kontrolü
                 if (window.location.hash) {
                     const hashText = window.location.hash.substring(1);
                     try {
@@ -309,6 +302,7 @@
                     }
                 }
 
+                // Query Parametresi Kontrolü (?data=)
                 if (!dataParam) {
                     const urlParams = new URLSearchParams(window.location.search);
                     dataParam = urlParams.get('data');
