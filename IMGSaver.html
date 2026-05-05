@@ -74,17 +74,12 @@
         const statusLog = document.getElementById('statusLog');
         const finalImage = document.getElementById('finalImage');
 
-        // =======================================================
-        // MOBİL VE PC ALGILAYICI
-        // =======================================================
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
-
-        // Sahayı cihaza göre dinamik atıyoruz
+        // YENİ: Oyuncu ve Rakip görselleri eklendi!
         const ASSETS = {
-            Background: isMobile 
-                        ? 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/dikeysaha2.jpg' 
-                        : 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
-            Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png'
+            Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
+            Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png',
+            Player: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/player.png',
+            Opponent: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/rivalplayer.png'
         };
 
         const loadedImages = {};
@@ -114,6 +109,9 @@
                 img.src = ASSETS[key];
             });
         }
+
+        // YENİ: Cihazın mobil mi PC mi olduğunu anlayan sistem
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
 
         function renderAndDownload(jsonPayload) {
             try {
@@ -151,18 +149,33 @@
                     if (el.type === 'Ball' && loadedImages.Ball) {
                         ctx.drawImage(loadedImages.Ball, -w / 2, -h / 2, w, h);
                     } 
+                    
+                    // --- OYUNCU ---
+                    else if (el.type === 'Player') {
+                        if (loadedImages.Player) {
+                            ctx.drawImage(loadedImages.Player, -w / 2, -h / 2, w, h);
+                        } else {
+                            // Görsel yüklenemezse mavi yuvarlak çiz (Yedek Plan)
+                            ctx.beginPath();
+                            ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
+                            ctx.fillStyle = "#3B82F6";
+                            ctx.fill();
+                            ctx.lineWidth = 2; ctx.strokeStyle = "#FFFFFF"; ctx.stroke();
+                        }
+                    } 
 
-                    // --- OYUNCU VE RAKİP ---
-                    else if (el.type === 'Player' || el.type === 'Opponent') {
-                        ctx.beginPath();
-                        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
-                        
-                        ctx.fillStyle = el.type === 'Player' ? "#3B82F6" : "#EF4444";
-                        ctx.fill();
-                        
-                        ctx.lineWidth = 2; 
-                        ctx.strokeStyle = "#FFFFFF"; 
-                        ctx.stroke();
+                    // --- RAKİP ---
+                    else if (el.type === 'Opponent') {
+                        if (loadedImages.Opponent) {
+                            ctx.drawImage(loadedImages.Opponent, -w / 2, -h / 2, w, h);
+                        } else {
+                            // Görsel yüklenemezse kırmızı yuvarlak çiz (Yedek Plan)
+                            ctx.beginPath();
+                            ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
+                            ctx.fillStyle = "#EF4444";
+                            ctx.fill();
+                            ctx.lineWidth = 2; ctx.strokeStyle = "#FFFFFF"; ctx.stroke();
+                        }
                     } 
 
                     // --- DÜZ ÇİZGİ ---
@@ -228,10 +241,10 @@
 
                     // --- YAZI ---
                     else if (el.type === 'Text' && el.text_content) { 
-                        // =======================================================
-                        // YENİ: CİHAZA GÖRE DİNAMİK YAZI BOYUTU (Mobil: 14, PC: 30)
-                        // =======================================================
-                        const fontSize = isMobile ? 14 : 30;
+                        // YENİ: Cihaza göre dinamik Font Size ayarı!
+                        // HTML arka planı yüksek çözünürlüklü olduğu için 14px aşırı küçük kalır.
+                        // Mobilden gelen kutu ölçüsüne göre 35, PC'ye göre 30 idealdir.
+                        const fontSize = isMobile ? 35 : 30;
 
                         ctx.fillStyle = "#FFFFFF"; 
                         ctx.font = "bold " + fontSize + "px Arial"; 
@@ -274,10 +287,9 @@
             preloadImages(() => {
                 let dataParam = null;
 
-                // Yeni sistem: #data=JSON veya #[JSON] üzerinden oku
+                // Yeni sistem: #data=JSON üzerinden oku
                 if (window.location.hash) {
                     const hashText = window.location.hash.substring(1);
-                    
                     try {
                         const hashParams = new URLSearchParams(hashText);
                         if (hashParams.has('data')) {
