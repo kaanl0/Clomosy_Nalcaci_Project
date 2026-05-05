@@ -219,8 +219,26 @@
 
         window.onload = () => {
             preloadImages(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                const dataParam = urlParams.get('data');
+                let dataParam = null;
+
+                // ==========================================
+                // YENİ: Sınırsız Veri İçin HASH Kontrolü
+                // ==========================================
+                if (window.location.hash) {
+                    let rawHash = window.location.hash.substring(1); // Baştaki # işaretini at
+                    try {
+                        // Clomosy'nin gönderdiği %22 (tırnak) gibi işaretleri gerçek yazıya çevir
+                        dataParam = decodeURIComponent(rawHash);
+                    } catch (error) {
+                        dataParam = rawHash;
+                    }
+                } 
+                // ESKİ: Geriye dönük uyumluluk için ?data= parametresine de bakar
+                else {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    dataParam = urlParams.get('data');
+                }
+                
                 if (dataParam) renderAndDownload(dataParam);
             });
         };
