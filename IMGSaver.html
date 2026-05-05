@@ -39,19 +39,22 @@
             margin-top: 15px;
             display: none; 
         }
-        button {
+        .action-btn {
             background-color: #16A64B;
             color: white;
             border: none;
-            padding: 10px 20px;
-            font-size: 16px;
+            padding: 15px 30px;
+            font-size: 18px;
             font-weight: bold;
             border-radius: 8px;
             cursor: pointer;
-            margin-top: 15px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 300px;
         }
-        button:hover { background-color: #209400; }
-        .log { color: #3DE482; font-family: monospace; margin-top: 10px; }
+        .action-btn:hover { background-color: #209400; }
+        .log { color: #3DE482; font-family: sans-serif; margin-top: 10px; font-size: 15px; line-height: 1.5; }
         .error { color: #EF4444; }
     </style>
 </head>
@@ -59,12 +62,13 @@
 
     <div class="container">
         <h2>Taktik Tahtası</h2>
-        <div id="statusLog" class="log">Görsel İşleniyor... Lütfen "İzin Ver" veya "Yapıştır" seçeneğini onaylayın.</div>
+        <div id="statusLog" class="log">Taktik verisi hafızaya kopyalandı.<br>Görseli indirmek için aşağıdaki butona tıklayın.</div>
+        
+        <!-- Tarayıcı Güvenliğini Aşmak İçin Tıklama Butonu -->
+        <button id="pasteBtn" class="action-btn" onclick="readFromClipboard()">📸 Görseli Oluştur</button>
         
         <canvas id="renderCanvas"></canvas>
         <img id="finalImage" alt="Oluşturulan Taktik" />
-        <br>
-        <button id="downloadBtn" style="display: none;">Telefona İndir</button>
     </div>
 
 <script>
@@ -72,6 +76,7 @@
         const ctx = canvas.getContext('2d');
         const statusLog = document.getElementById('statusLog');
         const finalImage = document.getElementById('finalImage');
+        const pasteBtn = document.getElementById('pasteBtn');
 
         const ASSETS = {
             Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
@@ -79,6 +84,8 @@
         };
         const loadedImages = {};
 
+        // Resimleri önceden yükle
+        let isAssetsLoaded = false;
         function preloadImages(callback) {
             let loadedCount = 0;
             const keys = Object.keys(ASSETS);
@@ -88,28 +95,19 @@
                 img.onload = () => {
                     loadedImages[key] = img;
                     loadedCount++;
-                    if (loadedCount === keys.length) callback();
+                    if (loadedCount === keys.length) {
+                        isAssetsLoaded = true;
+                        if(callback) callback();
+                    }
                 };
                 img.src = ASSETS[key];
             });
         }
+        preloadImages(); // Sayfa açılır açılmaz arka planda indirsin
 
         function renderAndDownload(jsonPayload) {
             try {
-                // Eğer pano boşsa veya veri hatalıysa işlem yapma
-                if (!jsonPayload || jsonPayload.trim() === '') {
-                    throw new Error("Geçerli taktik verisi bulunamadı.");
-                }
-
-                let elements;
-                try {
-                    elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
-                } catch(e) {
-                     // Bazen hafızada gereksiz bir metin olabilir
-                     statusLog.innerText = "Bekleyen çizim verisi yok.";
-                     return;
-                }
-
+                const elements = typeof jsonPayload === 'string' ? JSON.parse(jsonPayload) : jsonPayload;
                 const bgImg = loadedImages.Background;
                 canvas.width = bgImg.width;
                 canvas.height = bgImg.height;
@@ -155,22 +153,18 @@
                         ctx.lineWidth = Math.max(h, 3); 
                         ctx.lineCap = "round"; 
                         ctx.lineJoin = "round"; 
-
                         const startX = -w / 2;
                         const endX = w / 2;
                         
                         ctx.beginPath();
                         ctx.moveTo(startX, 0);
                         ctx.lineTo(endX, 0);
-
                         const headLength = 15; 
                         const headAngle = Math.PI / 6; 
-
                         ctx.moveTo(endX, 0);
                         ctx.lineTo(endX - headLength * Math.cos(headAngle), -headLength * Math.sin(headAngle));
                         ctx.moveTo(endX, 0);
                         ctx.lineTo(endX - headLength * Math.cos(headAngle), headLength * Math.sin(headAngle));
-
                         ctx.stroke();
                     }
                     else if (el.type === 'Rect') { 
@@ -192,7 +186,6 @@
                         ctx.textBaseline = "middle"; 
                         ctx.fillText(el.text_content, 0, 0); 
                     }
-
                     ctx.restore();
                 });
 
@@ -203,39 +196,53 @@
                 finalImage.style.display = 'block';
 
                 const link = document.createElement('a');
-                link.download = 'Taktik_Tahtasi.png';
+                link.download = 'Nalcaci_Taktik.png';
                 link.href = dataURL;
                 link.click(); 
 
-                statusLog.innerText = "Görsel başarıyla cihazınıza indirildi!";
+                statusLog.innerText = "Harika! Görsel başarıyla cihazınıza indirildi.";
                 
-                // İşlem bittikten sonra panoyu temizle (Güvenlik için)
+                // Güvenlik için işlemi bitince panoyu temizle
                 navigator.clipboard.writeText("");
                 
             } catch (error) {
-                statusLog.innerText = "Çizim Hatası: " + error.message;
+                statusLog.className = "log error";
+                statusLog.innerText = "Kritik Çizim Hatası: " + error.message;
+                pasteBtn.style.display = 'inline-block';
             }
         }
 
         // =======================================================
-        // YENİ: PANODAN (CLIPBOARD) VERİ OKUMA MANTIĞI
+        // GÜVENLİ: BUTONA TIKLANDIĞINDA PANODAN VERİ OKUMA
         // =======================================================
-        window.onload = () => {
-            preloadImages(async () => {
-                try {
-                    // Cihazın kopyalama hafızasına (Clipboard) eriş ve içindeki metni al
-                    const clipboardText = await navigator.clipboard.readText();
-                    
-                    if (clipboardText) {
-                         renderAndDownload(clipboardText);
-                    } else {
-                         statusLog.innerText = "Hafızada çizim verisi bulunamadı.";
-                    }
-                } catch (err) {
-                    statusLog.innerText = "Lütfen tarayıcının panoya (kopyalanan metne) erişmesine izin verin.";
+        async function readFromClipboard() {
+            if (!isAssetsLoaded) {
+                statusLog.innerText = "Saha görselleri yükleniyor, lütfen 1 saniye bekleyip tekrar tıklayın...";
+                return;
+            }
+
+            pasteBtn.style.display = 'none'; // Tıklanınca butonu gizle
+            statusLog.innerText = "Lütfen tarayıcının panoya (yapıştırmaya) erişmesine 'İzin Ver' diyerek onaylayın...";
+
+            try {
+                // Tarayıcı bu noktada kullanıcıya "İzin verilsin mi?" diye sorabilir
+                const clipboardText = await navigator.clipboard.readText();
+                
+                // Pano dolu mu ve JSON mantığına benziyor mu kontrolü
+                if (clipboardText && clipboardText.includes("type")) {
+                     statusLog.innerText = "Veri alındı, taktik tahtası çiziliyor...";
+                     renderAndDownload(clipboardText);
+                } else {
+                     statusLog.className = "log error";
+                     statusLog.innerText = "Hafızada geçerli bir taktik verisi bulunamadı! Lütfen uygulamaya dönüp 'SS Al' butonuna tekrar basın.";
+                     pasteBtn.style.display = 'inline-block';
                 }
-            });
-        };
+            } catch (err) {
+                statusLog.className = "log error";
+                statusLog.innerText = "Panoya erişim engellendi. Tarayıcınızın ayarlarına gidip 'Pano (Clipboard)' iznini açmanız gerekiyor.";
+                pasteBtn.style.display = 'inline-block';
+            }
+        }
     </script>
 </body>
 </html>
