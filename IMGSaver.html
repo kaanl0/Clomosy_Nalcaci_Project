@@ -74,12 +74,14 @@
         const statusLog = document.getElementById('statusLog');
         const finalImage = document.getElementById('finalImage');
 
-        // YENİ: Sadece yazı (font) boyutu kararı vermek için mobil algılayıcı
+        // YENİ: MOBİL / PC AYRIMI
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
 
-        // DÜZELTME: Delphi'deki X-Y dönüşüm matematiğine uyması için saha DAİMA yataysaha2 kalmalı!
+        // DİKEY SAHA MOBİL İÇİN, YATAY SAHA PC İÇİN OTOMATİK SEÇİLİR!
         const ASSETS = {
-            Background: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
+            Background: isMobile 
+                        ? 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/dikeysaha2.jpg' 
+                        : 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
             Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png'
         };
 
@@ -133,11 +135,38 @@
 
                 // 2. Elementleri çiz
                 elements.forEach(el => {
-                    const cx = Number(el.x) * canvas.width;
-                    const cy = Number(el.y) * canvas.height;
-                    const w = Number(el.width) * canvas.width;
-                    const h = Number(el.height) * canvas.height;
-                    const angleRad = Number(el.angle || 0) * (Math.PI / 180);
+                    
+                    // --- KOORDİNAT VE AÇI DÖNÜŞÜM MOTORU ---
+                    let cx, cy, w, h, angleRad;
+
+                    if (isMobile) {
+                        // JSON verisi YATAY formattadır, DİKEY sahaya kusursuz oturtmak için ters çeviriyoruz:
+                        cx = (1.0 - Number(el.y)) * canvas.width;
+                        cy = Number(el.x) * canvas.height;
+                        
+                        // Yükseklik ve Genişliği yer değiştiriyoruz
+                        w = Number(el.height) * canvas.width;
+                        h = Number(el.width) * canvas.height;
+                        
+                        if (el.type === 'Text') {
+                            angleRad = 90 * (Math.PI / 180); // Mobilde yazılar SADECE 90 derece döner!
+                        } else {
+                            angleRad = (Number(el.angle || 0) + 90) * (Math.PI / 180);
+                        }
+                    } 
+                    else {
+                        // Bilgisayarda her şey olduğu gibi kalır (Yatay saha)
+                        cx = Number(el.x) * canvas.width;
+                        cy = Number(el.y) * canvas.height;
+                        w = Number(el.width) * canvas.width;
+                        h = Number(el.height) * canvas.height;
+                        
+                        if (el.type === 'Text') {
+                            angleRad = 0; // PC'de yazılar düzdür
+                        } else {
+                            angleRad = Number(el.angle || 0) * (Math.PI / 180);
+                        }
+                    }
 
                     ctx.save();
                     ctx.translate(cx, cy);
@@ -148,7 +177,7 @@
                         ctx.drawImage(loadedImages.Ball, -w / 2, -h / 2, w, h);
                     } 
                     
-                    // --- OYUNCU VE RAKİP (Mavi ve Kırmızı Yuvarlaklar Orijinal Haliyle) ---
+                    // --- OYUNCU VE RAKİP ---
                     else if (el.type === 'Player' || el.type === 'Opponent') {
                         ctx.beginPath();
                         ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
@@ -224,9 +253,7 @@
 
                     // --- YAZI ---
                     else if (el.type === 'Text' && el.text_content) { 
-                        // Cihaza göre dinamik Font Size ayarı (Mobil=35, PC=30)
-                        const fontSize = isMobile ? 35 : 30;
-
+                        const fontSize = isMobile ? 35 : 30; // Cihaza göre boyut
                         ctx.fillStyle = "#FFFFFF"; 
                         ctx.font = "bold " + fontSize + "px Arial"; 
                         ctx.textAlign = "center"; 
@@ -237,7 +264,7 @@
                     ctx.restore();
                 });
 
-                // Daha sağlıklı indirme işlemi
+                // Görseli oluştur ve indir
                 canvas.toBlob((blob) => {
                     if (!blob) {
                         statusLog.innerText = "Görsel oluşturulamadı.";
@@ -251,7 +278,7 @@
                     finalImage.style.display = 'block';
 
                     const link = document.createElement('a');
-                    link.download = 'Nalcaci_Taktik.png';
+                    link.download = 'Taktik_Tahtasi.png';
                     link.href = blobUrl;
                     link.click();
 
@@ -268,7 +295,6 @@
             preloadImages(() => {
                 let dataParam = null;
 
-                // Yeni sistem: #data=JSON üzerinden oku
                 if (window.location.hash) {
                     const hashText = window.location.hash.substring(1);
                     try {
@@ -283,7 +309,6 @@
                     }
                 }
 
-                // Eski sistem desteği: ?data=JSON üzerinden de oku
                 if (!dataParam) {
                     const urlParams = new URLSearchParams(window.location.search);
                     dataParam = urlParams.get('data');
