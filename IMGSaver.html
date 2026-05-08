@@ -1,321 +1,46 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clomosy Taktik Tahtası</title>
-    <style>
-        body {
-            background-color: #071109;
-            color: #ffffff;
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            margin: 0;
-        }
-        .container {
-            background-color: #08160D;
-            border: 2px solid #173522;
-            border-radius: 10px;
-            padding: 20px;
-            max-width: 800px;
-            width: 100%;
-            text-align: center;
-        }
-        canvas {
-            max-width: 100%;
-            height: auto;
-            border: 4px solid #002db3;
-            border-radius: 4px;
-            margin-top: 15px;
-            display: none; 
-        }
-        #finalImage {
-            max-width: 100%;
-            border: 4px solid #3DE482;
-            border-radius: 4px;
-            margin-top: 15px;
-            display: none; 
-        }
-        .log { color: #3DE482; font-family: monospace; margin-top: 10px; }
-        .error { color: #EF4444; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clomosy Taktik Tahtasi</title>
+  <style>
+    body { background-color: #071109; color: #ffffff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+    .container { background-color: #08160D; border: 2px solid #173522; border-radius: 10px; padding: 20px; max-width: 800px; width: 100%; text-align: center; }
+    canvas { max-width: 100%; height: auto; border: 4px solid #002db3; border-radius: 4px; margin-top: 15px; display: none; }
+    #finalImage { max-width: 100%; border: 4px solid #3DE482; border-radius: 4px; margin-top: 15px; display: none; }
+    .log { color: #3DE482; font-family: monospace; margin-top: 10px; }
+    .error { color: #EF4444; }
+  </style>
 </head>
 <body>
-
-    <div class="container">
-        <h2>Taktik Tahtası</h2>
-        <div id="statusLog" class="log">Görsel İşleniyor...</div>
-        
-        <canvas id="renderCanvas"></canvas>
-        <img id="finalImage" alt="Oluşturulan Taktik" />
-    </div>
-
-<script>
-        const canvas = document.getElementById('renderCanvas');
-        const ctx = canvas.getContext('2d');
-        const statusLog = document.getElementById('statusLog');
-        const finalImage = document.getElementById('finalImage');
-
-        // =======================================================
-        // CİHAZ ALGILAYICI (Mobil / PC)
-        // =======================================================
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
-
-        // Sahayı cihaza göre dinamik atıyoruz
-        const ASSETS = {
-            Background: isMobile 
-                        ? 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/dikeysaha2.jpg' 
-                        : 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg',
-            Ball: 'https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png'
-        };
-
-        const loadedImages = {};
-
-        function preloadImages(callback) {
-            let loadedCount = 0;
-            const keys = Object.keys(ASSETS);
-
-            keys.forEach(key => {
-                const img = new Image();
-                img.crossOrigin = "Anonymous";
-
-                img.onload = () => {
-                    loadedImages[key] = img;
-                    loadedCount++;
-                    if (loadedCount === keys.length) {
-                        callback();
-                    }
-                };
-
-                img.onerror = () => {
-                    statusLog.innerText = "Görsel yüklenemedi: " + key;
-                    statusLog.classList.add("error");
-                };
-
-                img.src = ASSETS[key];
-            });
-        }
-
-        function renderAndDownload(jsonPayload) {
-            try {
-                // Delphi'den gelen %22 işaretlerini her ihtimale karşı " işaretine çevir
-                const cleanJsonStr = typeof jsonPayload === 'string' ? jsonPayload.replace(/%22/g, '"') : jsonPayload;
-                const elements = typeof cleanJsonStr === 'string' ? JSON.parse(cleanJsonStr) : cleanJsonStr;
-
-                if (!Array.isArray(elements)) {
-                    statusLog.innerText = "JSON formatı hatalı.";
-                    statusLog.classList.add("error");
-                    return;
-                }
-
-                const bgImg = loadedImages.Background;
-                canvas.width = bgImg.width;
-                canvas.height = bgImg.height;
-
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
-
-                // Elementleri Çiz
-                elements.forEach(el => {
-                    let cx, cy, w, h, angleDeg;
-
-                    const relX = Number(el.x);
-                    const relY = Number(el.y);
-                    const relW = Number(el.width);
-                    const relH = Number(el.height);
-                    const relAngle = Number(el.angle || 0);
-
-                    // --- KUSURSUZ MATEMATİK ÇEVİRİCİ ---
-                    if (isMobile) {
-                        cx = (1.0 - relY) * canvas.width;
-                        cy = relX * canvas.height;
-                        
-                        // Delphi tarafındaki çapraz bölmeyi tersine çeviriyoruz
-                        w = relW * canvas.height; 
-                        h = relH * canvas.width;  
-                        
-                        angleDeg = el.type === 'Text' ? 0 : relAngle + 90;
-                    } 
-                    else {
-                        cx = relX * canvas.width;
-                        cy = relY * canvas.height;
-                        
-                        w = relW * canvas.width;
-                        h = relH * canvas.height;
-                        
-                        angleDeg = el.type === 'Text' ? 0 : relAngle;
-                    }
-
-                    // --- BOYUTLARI (W ve H) DELPHI'DEKİ GİBİ SABİTLE ---
-                    if (el.type === 'Player' || el.type === 'Opponent') {
-                        w = isMobile ? 36 : 60;
-                        h = isMobile ? 36 : 60;
-                    } 
-                    else if (el.type === 'Ball') {
-                        w = isMobile ? 24 : 40;
-                        h = isMobile ? 24 : 40;
-                    } 
-                    else if (el.type === 'Text') {
-                        w = 250;
-                        h = 30;
-                    } 
-                    else if (el.type === 'Line' || el.type === 'Arrow') {
-                        h = 4; // Çizgi ve ok kalınlığı daima sabit 4 piksel
-                    }
-
-                    const angleRad = angleDeg * (Math.PI / 180);
-
-                    ctx.save();
-                    ctx.translate(cx, cy);
-                    ctx.rotate(angleRad);
-
-                    // --- TOP ---
-                    if (el.type === 'Ball' && loadedImages.Ball) {
-                        ctx.drawImage(loadedImages.Ball, -w / 2, -h / 2, w, h);
-                    } 
-                    // --- OYUNCU VE RAKİP (ORİJİNAL MAVİ/KIRMIZI YUVARLAKLAR) ---
-                    else if (el.type === 'Player' || el.type === 'Opponent') {
-                        ctx.beginPath();
-                        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI);
-                        ctx.fillStyle = el.type === 'Player' ? "#3B82F6" : "#EF4444";
-                        ctx.fill();
-                        ctx.lineWidth = 2; 
-                        ctx.strokeStyle = "#FFFFFF"; 
-                        ctx.stroke();
-                    } 
-                    // --- DÜZ ÇİZGİ ---
-                    else if (el.type === 'Line') { 
-                        ctx.strokeStyle = "#EF4444"; 
-                        ctx.lineWidth = h; // 4 piksel
-                        ctx.lineCap = "round";
-                        ctx.beginPath();
-                        ctx.moveTo(-w / 2, 0);
-                        ctx.lineTo(w / 2, 0);
-                        ctx.stroke();
-                    } 
-                    // --- OK ---
-                    else if (el.type === 'Arrow') {
-                        ctx.strokeStyle = "#EF4444"; 
-                        ctx.lineWidth = h; // 4 piksel
-                        ctx.lineCap = "round";
-                        ctx.lineJoin = "round";
-
-                        const startX = -w / 2;
-                        const endX = w / 2;
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(startX, 0);
-                        ctx.lineTo(endX, 0);
-
-                        const headLength = 20; // Ok kanadı uzunluğu
-                        const headAngle = 30 * (Math.PI / 180); // 30 derece (150 ve 210'un karşılığı)
-
-                        // Kanat 1
-                        ctx.moveTo(endX, 0);
-                        ctx.lineTo(endX - headLength * Math.cos(headAngle), -headLength * Math.sin(headAngle));
-                        // Kanat 2
-                        ctx.moveTo(endX, 0);
-                        ctx.lineTo(endX - headLength * Math.cos(headAngle), headLength * Math.sin(headAngle));
-
-                        ctx.stroke();
-                    } 
-                    // --- DİKDÖRTGEN ---
-                    else if (el.type === 'Rect') { 
-                        ctx.strokeStyle = "#EF4444"; 
-                        ctx.lineWidth = 3; 
-                        ctx.strokeRect(-w / 2, -h / 2, w, h); 
-                    } 
-                    // --- ÇEMBER ---
-                    else if (el.type === 'Circle') { 
-                        ctx.strokeStyle = "#EF4444"; 
-                        ctx.lineWidth = 3; 
-                        ctx.beginPath(); 
-                        ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI); 
-                        ctx.stroke(); 
-                    } 
-                    // --- YAZI ---
-                    else if (el.type === 'Text' && el.text_content) { 
-                        // Mobilde 14, PC'de 30 Punto
-                        const fontSize = isMobile ? 14 : 30;
-
-                        ctx.fillStyle = "#FFFFFF"; 
-                        ctx.font = "bold " + fontSize + "px Arial"; 
-                        ctx.textAlign = "center"; 
-                        ctx.textBaseline = "middle"; 
-                        
-                        // Mobilde yazının düzgün okunması için 90 derece döndür
-                        if (isMobile) {
-                            ctx.rotate(90 * (Math.PI / 180));
-                        }
-                        
-                        ctx.fillText(el.text_content, 0, 0); 
-                    }
-
-                    ctx.restore();
-                });
-
-                // Sağlıklı indirme işlemi
-                canvas.toBlob((blob) => {
-                    if (!blob) {
-                        statusLog.innerText = "Görsel oluşturulamadı.";
-                        statusLog.classList.add("error");
-                        return;
-                    }
-
-                    const blobUrl = URL.createObjectURL(blob);
-                    finalImage.src = blobUrl;
-                    finalImage.style.display = 'block';
-
-                    const link = document.createElement('a');
-                    link.download = 'Nalcaci_Taktik.png';
-                    link.href = blobUrl;
-                    link.click();
-
-                    statusLog.innerText = "Görsel başarıyla oluşturuldu ve indirildi!";
-                }, "image/png");
-
-            } catch (error) {
-                statusLog.innerText = "Çizim Hatası: " + error.message;
-                statusLog.classList.add("error");
-            }
-        }
-
-        window.onload = () => {
-            preloadImages(() => {
-                let dataParam = null;
-
-                // Hash kontrolü
-                if (window.location.hash) {
-                    const hashText = window.location.hash.substring(1);
-                    try {
-                        const hashParams = new URLSearchParams(hashText);
-                        if (hashParams.has('data')) {
-                            dataParam = hashParams.get('data');
-                        } else {
-                            dataParam = decodeURIComponent(hashText);
-                        }
-                    } catch (e) {
-                        dataParam = decodeURIComponent(hashText);
-                    }
-                }
-
-                // Query Parametresi Kontrolü (?data=)
-                if (!dataParam) {
-                    const urlParams = new URLSearchParams(window.location.search);
-                    dataParam = urlParams.get('data');
-                }
-
-                if (dataParam) {
-                    renderAndDownload(dataParam);
-                } else {
-                    statusLog.innerText = "Veri bulunamadı.";
-                    statusLog.classList.add("error");
-                }
-            });
-        };
-    </script>
+  <div class="container">
+    <h2>Taktik Tahtasi</h2>
+    <div id="statusLog" class="log">Görsel Isleniyor...</div>
+    <canvas id="renderCanvas"></canvas>
+    <img id="finalImage" alt="Olusturulan Taktik" />
+  </div>
+  <script>
+    const canvas = document.getElementById("renderCanvas");
+    const ctx = canvas.getContext("2d");
+    const statusLog = document.getElementById("statusLog");
+    const finalImage = document.getElementById("finalImage");
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 800;
+    const ASSETS = { Background: isMobile ? "https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/dikeysaha2.jpg" : "https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/yataysaha2.jpg", Ball: "https://raw.githubusercontent.com/kaanl0/Clomosy_Nalcaci_Project/main/ball.png" };
+    const loadedImages = {};
+    function preloadImages(callback) { let loadedCount = 0; const keys = Object.keys(ASSETS); keys.forEach(key => { const img = new Image(); img.crossOrigin = "Anonymous"; img.onload = () => { loadedImages[key] = img; loadedCount++; if (loadedCount === keys.length) { callback(); } }; img.onerror = () => { statusLog.innerText = "Görsel yüklenemedi: " + key; statusLog.classList.add("error"); }; img.src = ASSETS[key]; }); }
+    function renderAndDownload(jsonPayload) { try { const cleanJsonStr = typeof jsonPayload === "string" ? jsonPayload.replace(/%22/g, "\"" ) : jsonPayload; const elements = typeof cleanJsonStr === "string" ? JSON.parse(cleanJsonStr) : cleanJsonStr; if (!Array.isArray(elements)) { statusLog.innerText = "JSON formati hatali."; statusLog.classList.add("error"); return; } const bgImg = loadedImages.Background; canvas.width = bgImg.width; canvas.height = bgImg.height; ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height); elements.forEach(el => { let cx, cy, w, h, angleDeg; const relX = Number(el.x); const relY = Number(el.y); const relW = Number(el.width); const relH = Number(el.height); const relAngle = Number(el.angle || 0); const elColor = el.bg_color || "#FFFFFF"; if (isMobile) { cx = (1.0 - relY) * canvas.width; cy = relX * canvas.height; w = relW * canvas.height; h = relH * canvas.width; angleDeg = el.type === "Text" ? 0 : relAngle + 90; } else { cx = relX * canvas.width; cy = relY * canvas.height; w = relW * canvas.width; h = relH * canvas.height; angleDeg = el.type === "Text" ? 0 : relAngle; } if (el.type === "Player" || el.type === "Opponent") { w = isMobile ? 36 : 60; h = isMobile ? 36 : 60; } else if (el.type === "Ball") { w = isMobile ? 24 : 40; h = isMobile ? 24 : 40; } else if (el.type === "Text") { w = 250; h = 30; } else if (el.type === "Line" || el.type === "Arrow") { h = 4; } const angleRad = angleDeg * (Math.PI / 180); ctx.save(); ctx.translate(cx, cy); ctx.rotate(angleRad); if (el.type === "Ball" && loadedImages.Ball) { ctx.drawImage(loadedImages.Ball, -w / 2, -h / 2, w, h); } else if (el.type === "Player" || el.type === "Opponent") { ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI); ctx.fillStyle = elColor; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = el.type === "Opponent" ? "#FF000050" : "#FFFFFF"; ctx.stroke(); } else if (el.type === "Line") { ctx.strokeStyle = elColor; ctx.lineWidth = h; ctx.lineCap = "round"; ctx.beginPath(); ctx.moveTo(-w / 2, 0); ctx.lineTo(w / 2, 0); ctx.stroke(); } else if (el.type === "Arrow") { ctx.strokeStyle = elColor; ctx.lineWidth = h; ctx.lineCap = "round"; ctx.lineJoin = "round"; const startX = -w / 2; const endX = w / 2; ctx.beginPath(); ctx.moveTo(startX, 0); ctx.lineTo(endX, 0); const headLength = 20; const headAngle = 30 * (Math.PI / 180); ctx.moveTo(endX, 0); ctx.lineTo(endX - headLength * Math.cos(headAngle), -headLength * Math.sin(headAngle)); ctx.moveTo(endX, 0); ctx.lineTo(endX - headLength * Math.cos(headAngle), headLength * Math.sin(headAngle)); ctx.stroke(); } else if (el.type === "Rect") { ctx.strokeStyle = elColor; ctx.lineWidth = 3; ctx.strokeRect(-w / 2, -h / 2, w, h); } else if (el.type === "Circle") { ctx.strokeStyle = elColor; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, 2 * Math.PI); ctx.stroke(); } else if (el.type === "Text" && el.text_content) { const fontSize = isMobile ? 14 : 30; ctx.fillStyle = elColor; ctx.font = "bold " + fontSize + "px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; if (isMobile) { ctx.rotate(90 * (Math.PI / 180)); } ctx.fillText(el.text_content, 0, 0); } ctx.restore(); }); canvas.toBlob((blob) => { if (!blob) { statusLog.innerText = "Görsel olusturulamadi."; statusLog.classList.add("error"); return; } const blobUrl = URL.createObjectURL(blob); finalImage.src = blobUrl; finalImage.style.display = "block"; const link = document.createElement("a"); link.download = "Nalcaci_Taktik.png"; link.href = blobUrl; link.click(); statusLog.innerText = "Görsel basariyla olusturuldu ve indirildi!"; }, "image/png"); } catch (error) { statusLog.innerText = "Çizim Hatasi: " + error.message; statusLog.classList.add("error"); } }
+    window.onload = () => { 
+      preloadImages(() => { 
+        const dataParam = [[DATA_PARAM]]; 
+        if (dataParam) { 
+          renderAndDownload(dataParam); 
+        } else { 
+          statusLog.innerText = "Veri bulunamadı."; 
+          statusLog.classList.add("error"); 
+        } 
+      }); 
+    };
+  </script>
 </body>
 </html>
